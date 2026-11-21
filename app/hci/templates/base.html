@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}놓칠뻔{% endblock %} · 놓칠뻔</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% if account_id %}
+<header class="topbar">
+  <a class="logo" href="/notices">놓칠뻔</a>
+  <nav>
+    <a href="/notices" class="{{ 'on' if nav == 'notices' }}">공고</a>
+    <a href="/sources" class="{{ 'on' if nav == 'sources' }}">관심 출처</a>
+    <a href="/profile" class="{{ 'on' if nav == 'profile' }}">내 정보</a>
+    {% for key, href, label in nav_extra %}<a href="{{ href }}" class="{{ 'on' if nav == key }}">{{ label }}</a>{% endfor %}
+  </nav>
+  <div class="who">{{ login_id }} · <a href="/logout">로그아웃</a></div>
+</header>
+{% endif %}
+<main class="{% block mainclass %}page{% endblock %}">
+{% block content %}{% endblock %}
+</main>
+{% block toast %}{% endblock %}
+<footer class="demo-foot">
+  SPRINT 1~2 데모{% for f in footer_items %} · {{ f }}{% endfor %}
+  · 오늘 {{ today.isoformat() }}{{ ' (시연 날짜 고정)' if demo_today }}
+</footer>
+<script>
+document.querySelectorAll('.toast').forEach(t => setTimeout(() => t.classList.add('hide'), 6000));
+document.querySelectorAll('form[data-spin]').forEach(f => f.addEventListener('submit', () => {
+  const b = f.querySelector('button[type=submit]'); if (b) { b.disabled = true; b.innerHTML = '<span class="spin"></span>' + b.dataset.wait; }
+}));
+</script>
+</body>
+</html>
