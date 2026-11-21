@@ -5,7 +5,7 @@
 
 ## 서비스
 학과·외부 기관 공지(장학금·공모전·행사)를 모아, 경상국립대 재학생의 학적 프로필로 지원 자격을 자동 판정하고 근거와 함께 보여 주며 마감 임박 알림을 보내는 서비스.
-FastAPI + Jinja2 + SQLite(운영은 PostgreSQL 잠정), 수집 requests + BeautifulSoup + RSS, 추출 Gemini(대안 Anthropic), 판정 규칙 기반, 스케줄 APScheduler 30분(웹 서버 안에서, uvicorn worker 1개).
+FastAPI + Jinja2 + SQLite (팀 결정 2026-11-21), 수집 requests + BeautifulSoup + RSS, 추출 Gemini(대안 Anthropic), 판정 규칙 기반, 스케줄 APScheduler 30분(웹 서버 안에서, uvicorn worker 1개).
 
 ## 먼저 읽을 것
 - `docs/CODING_STANDARD.md` : 이름 규칙, 설계 대응 주석, 계층·패키지 의존 규칙. **코드를 쓰기 전에 반드시 읽는다.**
