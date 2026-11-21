@@ -26,11 +26,11 @@ FastAPI + Jinja2 + SQLite (팀 결정 2026-11-21), 수집 requests + BeautifulSo
 - `app/hci/` 화면 6개 → `app/pd/<패키지>/` 제어·실체·외부 연동 → `app/dm/` DB. import는 이 방향으로만.
 - PD 패키지: `user`, `source`, `collect`, `notice`, `notify`, `external`. 패키지끼리 import는 패키지 다이어그램의 의존 10개만 허용. 화면 모듈도 소속 패키지(`STRUCTURE.md` 1절 표)로 같은 규칙을 따른다. `hci/common.py`는 사용자 패키지만 import 한다.
 - 표에 없는 화면 모듈이나 `app/pd` 아래의 모르는 패키지는 위반이다. 새 화면을 만들어야 하면 사용자에게 먼저 알린다.
-- `tests/test_architecture.py`가 이 규칙을 검사한다(지금 위반 0건, 예외 0건). 이 테스트를 끄거나 예외를 추가하지 않는다. 예외가 필요해 보이면 고치지 말고 사용자에게 알린다(팀 결정).
+- `tests/test_architecture.py`가 이 규칙을 검사하며, 위반이 있으면 안 된다. 이 테스트를 끄거나 예외를 추가하지 않는다. 예외가 필요해 보이면 고치지 말고 사용자에게 알린다(팀 결정).
 - 제어·실체는 모듈 함수다. 상태가 있는 `CollectCtl`·`CollectScheduler`만 클래스(인스턴스 `collector`·`scheduler`).
 - 경계 클래스(외부 연동)는 창구만, 판단은 제어가 한다.
 - 다른 패키지의 값이나 시연 정보는 `hci/common.py`의 `register_footer`·`register_nav`·`register_panel`로 함수를 등록해 화면에 끼운다.
-- 지금 코드에 있는 이름(함수·클래스·모듈·템플릿)은 맵핑표(`docs/mapping/`)가 기준이다. 맵핑표에 ⚠️·❓로 적힌 것 말고는 이름을 바꾸지 않는다.
+- 코드의 이름(함수·클래스·모듈·템플릿)은 맵핑표(`docs/mapping/`)가 기준이다. 이름을 바꾸거나 설계 연산을 새로 구현하면 같은 PR에서 맵핑표도 고친다.
 - 설계 외 공개 함수를 만들면 코드에 `# 설계 외: 이유`를 달고 맵핑표에도 적는다. 설계 연산을 구현한 함수(화면 라우트 포함)에는 연산 표기를 주석으로 단다.
 - 시연 전용 코드는 `app/demo/`에만 둔다(DEMO_MODE=1일 때만 `main.py`가 설치). 본 코드는 `app.demo`를 import 하지 않는다.
 
@@ -58,7 +58,7 @@ pytest -q            # 한글 Windows에서 인코딩 문제가 나면 PYTHONUTF
 python run.py        # Windows는 py run.py
 ```
 포맷과 `--fix`는 자기 담당 경로에만 돌린다(전체에 돌리면 다른 사람 파일까지 바뀌어 충돌한다). `ruff check .`(검사만)는 전체에 돌린다.
-PR 전에 `ruff check .`(위반 0건)와 `pytest`가 모두 통과해야 한다. 테스트 수가 줄면 안 된다(v3.3 기준 77개).
+PR 전에 `ruff check .`(위반 0건)와 `pytest`가 모두 통과해야 한다. 테스트 수가 줄면 안 된다.
 
 ## 답변 방식
 - 한국어로 답한다. 설계 이름(한글)과 코드 이름(영어)을 함께 적는다. 예: "수집 제어(`pd/collect/collect_ctl.py::CollectCtl.start`)".
