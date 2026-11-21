@@ -36,7 +36,7 @@ def set_example_provider(fn):  # 설계 외: 시연용 대체 결과 주입
 
 
 # ---------------------------------------------------------------- 상태 결정
-def _decide_status(response, body):  # 설계 외: 상태를 결정한다(응답, 검증 결과)
+def _decide_status(response, body, title=""):  # 설계 외: 상태를 결정한다(응답, 검증 결과)
     """LLM 응답(또는 대체 결과)과 본문으로 공지 상태를 정한다. DB를 쓰지 않아 채점에서도 쓴다."""
     if not response.get("is_recruitment", True):  # 대안 3: 모집 공고 아님
         return {
@@ -46,7 +46,7 @@ def _decide_status(response, body):  # 설계 외: 상태를 결정한다(응답
             "deadline_evidence": None,
             "note": "모집 공고가 아닌 공지",
         }
-    checked = verifier.verify(response, body)  # 대조한다(응답, 본문) : 검증 결과
+    checked = verifier.verify(response, body, title)  # 대조한다(응답, 본문) : 검증 결과
     conds = [c for c in checked["conditions"] if c.get("item") in llm_client.ITEMS and c.get("value")]
     unverified = [c for c in conds if not c["verified"]]
     deadline = response.get("deadline") if checked["deadline_verified"] else None
@@ -110,7 +110,7 @@ def extract(notice_id):  # 추출한다(공지)
             condition.save_all(notice_id, [])
             return
         response, method = fallback
-    r = _decide_status(response, n["body"])
+    r = _decide_status(response, n["body"], n["title"])
     condition.save_all(notice_id, r["conditions"])
     notice.save_result(
         notice_id,

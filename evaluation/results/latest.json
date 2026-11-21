@@ -1,7 +1,7 @@
 {
- "at": "2026-11-21 15:03:25",
+ "at": "2026-11-21 16:18:59",
  "mode": "auto",
- "labels_status": "초안 · 팀 검토 필요",
+ "labels_status": "팀 검토 완료 (2026-11-21)",
  "results": [
   {
    "summary": {
@@ -17,16 +17,19 @@
     "scored": 8,
     "failed": 0,
     "unavailable": 0,
-    "recruit_acc": 75.0,
-    "deadline_acc": 33.3,
-    "cond_recall": 30.4,
-    "cond_precision": 77.8,
-    "evidence_pass": 88.9,
+    "recruit_acc": 100.0,
+    "deadline_acc": 40.0,
+    "cond_recall": 28.0,
+    "cond_precision": 100.0,
+    "evidence_pass": 85.7,
     "fabricated": 1,
-    "verdict_acc": 50.0,
-    "check_ratio": 40.0,
+    "verdict_acc": 75.0,
+    "mismatch_risky": 0,
+    "mismatch_caution": 1,
+    "mismatch_safe": 1,
+    "check_ratio": 30.0,
     "latency_avg_ms": null,
-    "labels_reviewed": false
+    "labels_reviewed": true
    },
    "rows": [
     {
@@ -51,6 +54,7 @@
      "fabricated": 0,
      "verdict": "확인 필요",
      "verdict_ok": false,
+     "mismatch": "안전",
      "status": "추출 완료",
      "conditions": [
       {
@@ -75,7 +79,7 @@
      "deadline": "2026-10-06",
      "deadline_label": "2026-10-19",
      "deadline_ok": false,
-     "label_conds": 2,
+     "label_conds": 4,
      "pred_conds": 1,
      "matched": 1,
      "pred_matched": 1,
@@ -83,6 +87,7 @@
      "fabricated": 0,
      "verdict": "확인 필요",
      "verdict_ok": true,
+     "mismatch": null,
      "status": "추출 완료",
      "conditions": [
       {
@@ -115,6 +120,7 @@
      "fabricated": 0,
      "verdict": "확인 필요",
      "verdict_ok": true,
+     "mismatch": null,
      "status": "추출 완료",
      "conditions": [
       {
@@ -134,34 +140,28 @@
     {
      "ntt_sn": "8707902",
      "title": "구)경남과기대 2026학년도 2학기 성적포기 및 동일교과목 성적취소 신청안내",
-     "expected_verdict": "확인 필요",
+     "expected_verdict": "모집 공고 아님",
      "excluded": false,
      "failed": false,
      "how": "rule",
      "model": "-",
      "latency_ms": null,
-     "is_recruitment": true,
+     "is_recruitment": false,
      "recruit_ok": true,
-     "deadline": "2026-09-29",
-     "deadline_label": "2026-10-13",
-     "deadline_ok": false,
-     "label_conds": 1,
-     "pred_conds": 1,
+     "deadline": null,
+     "deadline_label": null,
+     "deadline_ok": null,
+     "label_conds": 0,
+     "pred_conds": 0,
      "matched": 0,
      "pred_matched": 0,
-     "verified": 1,
+     "verified": 0,
      "fabricated": 0,
-     "verdict": "확인 필요",
+     "verdict": "모집 공고 아님",
      "verdict_ok": true,
-     "status": "추출 완료",
-     "conditions": [
-      {
-       "item": "기타",
-       "value": "성적포기 범위: 2",
-       "evidence": "2. 성적포기 범위: 2026학년도 1학기까지 이수한 교과목",
-       "verified": true
-      }
-     ]
+     "mismatch": null,
+     "status": "모집 공고 아님",
+     "conditions": []
     },
     {
      "ntt_sn": "8610403",
@@ -172,9 +172,9 @@
      "how": "rule",
      "model": "-",
      "latency_ms": null,
-     "is_recruitment": true,
-     "recruit_ok": false,
-     "deadline": "2026-09-22",
+     "is_recruitment": false,
+     "recruit_ok": true,
+     "deadline": null,
      "deadline_label": null,
      "deadline_ok": null,
      "label_conds": 0,
@@ -183,9 +183,10 @@
      "pred_matched": 0,
      "verified": 0,
      "fabricated": 0,
-     "verdict": "확인 필요",
-     "verdict_ok": false,
-     "status": "확인 필요",
+     "verdict": "모집 공고 아님",
+     "verdict_ok": true,
+     "mismatch": null,
+     "status": "모집 공고 아님",
      "conditions": []
     },
     {
@@ -197,28 +198,22 @@
      "how": "rule",
      "model": "-",
      "latency_ms": null,
-     "is_recruitment": true,
-     "recruit_ok": false,
+     "is_recruitment": false,
+     "recruit_ok": true,
      "deadline": null,
      "deadline_label": null,
      "deadline_ok": null,
      "label_conds": 0,
-     "pred_conds": 1,
+     "pred_conds": 0,
      "matched": 0,
      "pred_matched": 0,
-     "verified": 1,
+     "verified": 0,
      "fabricated": 0,
-     "verdict": "지원 가능",
-     "verdict_ok": false,
-     "status": "추출 완료",
-     "conditions": [
-      {
-       "item": "재학 상태",
-       "value": "졸업예정자",
-       "evidence": "※ 2월 졸업예정자의 경우는 첨부된 <수강신청 정정원>을 작성하여 학과사무실을 통해 정정",
-       "verified": true
-      }
-     ]
+     "verdict": "모집 공고 아님",
+     "verdict_ok": true,
+     "mismatch": null,
+     "status": "모집 공고 아님",
+     "conditions": []
     },
     {
      "ntt_sn": "8829161",
@@ -250,7 +245,7 @@
      "deadline": "2026-07-01",
      "deadline_label": "2026-09-30",
      "deadline_ok": false,
-     "label_conds": 4,
+     "label_conds": 5,
      "pred_conds": 2,
      "matched": 2,
      "pred_matched": 2,
@@ -258,6 +253,7 @@
      "fabricated": 1,
      "verdict": "확인 필요",
      "verdict_ok": true,
+     "mismatch": null,
      "status": "확인 필요",
      "conditions": [
       {
@@ -296,6 +292,7 @@
      "fabricated": 0,
      "verdict": "지원 가능",
      "verdict_ok": false,
+     "mismatch": "주의",
      "status": "추출 완료",
      "conditions": [
       {

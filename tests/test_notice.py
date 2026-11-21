@@ -148,3 +148,30 @@ def test_view_log_viewed_with_notice_ids(mock_notices, test_account):
     assert ids[0] in view_log.viewed(test_account)
     assert view_log.viewed(test_account, ids) == view_log.viewed(test_account) & set(ids)
     assert ids[0] in view_log.viewed(test_account, ids[:1]) and view_log.viewed(test_account, []) == set()
+
+
+def test_aerospace_dept_keywords():
+    """항공우주공학부 분야 키워드 (팀 결정 2026-11-21). 키워드는 '충족'을 늘릴 뿐 '불충족'을 만들지 않는다."""
+    p = {**PROFILE, "department": "항공우주공학부"}
+
+    def m(v):
+        return engine._match_item("학과", v, p)[0]
+
+    assert m("항공 관련 학과") == engine.OK
+    assert m("우주·위성 분야 전공자") == engine.OK
+    assert m("항공우주공학과") == engine.CHECK  # 학부·학과만 다름
+    assert m("항공운항학과") == engine.CHECK  # 키워드만 겹침 → 확인 필요 (불충족 아님)
+    assert m("기계공학과, 전기공학과") == engine.NO
+
+
+def test_not_recruit_folded_out_of_verdicts(mock_notices, test_account):
+    """'모집 공고 아님'은 판정이 아니다: 전체 보기 판정 목록에서 빼고 not_recruit 로 따로 (맨 아래에 접음)."""
+    from app.pd.notice import query_ctl
+    from app.pd.user import profile
+
+    profile.save(test_account, **PROFILE)
+    data = query_ctl.request_all(test_account)
+    assert all(i["notice"]["status"] != "모집 공고 아님" for i in data["items"])
+    assert data["not_recruit"] and all(i["verdict"] is None for i in data["not_recruit"])
+    d = query_ctl.request_detail(test_account, data["not_recruit"][0]["notice"]["id"])
+    assert d["judgement"]["verdict"] is None

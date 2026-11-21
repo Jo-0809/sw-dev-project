@@ -60,7 +60,11 @@ def test_full_scenario(server):
     assert allv["2026 동계 산학협력 현장실습(인턴십) 참여 학생 모집"] == "지원 불가"
     assert allv["대학 홍보 서포터즈 '경상누리' 7기 모집"] == "확인 필요"
     assert allv["2027학년도 1학기 학습 튜터링 튜터 모집"] == "확인 필요"
-    assert allv["2026학년도 2학기 국가근로장학생 선발 명단 안내"] == "모집 공고 아님"
+    assert "2026학년도 2학기 국가근로장학생 선발 명단 안내" not in allv  # 모집 공고 아님은 판정 목록에 없음
+    folded = [i["notice"]["title"] for i in query_ctl.request_all(aid)["not_recruit"]]
+    assert folded == ["2026학년도 2학기 국가근로장학생 선발 명단 안내"]  # 맨 아래에 접어 둠
+    page = s.get(BASE + "/notices?view=all").text
+    assert "판정 대상이 아닌 공지 1건" in page and 'badge na">모집 공고 아님' not in page
     # 상세 + 열람 기록
     nid = lst["items"][1]["notice"]["id"]
     page = s.get(f"{BASE}/notices/{nid}").text

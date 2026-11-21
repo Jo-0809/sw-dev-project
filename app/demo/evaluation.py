@@ -16,6 +16,7 @@
   지어낸 조건 수     근거 대조를 통과하지 못한 조건 수
   확인 필요 비율     표본 전체 중 시스템이 '확인 필요'로 저장한 공지 비율 (추출 단계 상태, 이미지 본문 포함)
   판정 일치율        labels.json 의 프로필로 판정 엔진을 돌린 결과가 expected_verdict 와 같은 비율
+  판정 불일치        위험(공고를 숨김) / 주의(잘못 '지원 가능') / 안전(확인 필요로 돌림) 건수
   평균 응답 시간     API 호출(또는 녹화된 호출)의 평균 ms
 """
 
@@ -107,6 +108,24 @@ def availability():
     return rows
 
 
+RISKY, CAUTION, SAFE = "위험", "주의", "안전"
+
+
+def mismatch_kind(verdict, expected):
+    """판정 불일치 종류 (팀 결정 2026-11-21). 일치하면 None.
+      위험 : 시스템이 '지원 불가'나 '모집 공고 아님'으로 냈는데 정답은 아님 → 공고를 숨김 (가장 나쁜 오류)
+      주의 : 시스템이 '지원 가능'으로 냈는데 정답은 아님 → 사용자가 원문에서 걸러야 함
+      안전 : 정답은 가능·불가·모집 공고 아님인데 시스템이 '확인 필요' → 보여 주되 확인을 맡김
+    확인 필요 비율 목표(10% 이하)는 그대로다. 안전한 불일치도 그 비율에 계속 들어간다."""
+    if expected is None or verdict == expected:
+        return None
+    if verdict in ("지원 불가", "모집 공고 아님"):
+        return RISKY
+    if verdict == "지원 가능":
+        return CAUTION
+    return SAFE
+
+
 def run_method(method, mode="auto", progress=None):
     """한 방법으로 표본 전체를 추출하고 채점한다."""
     labels = load_labels()
@@ -142,9 +161,7 @@ def run_method(method, mode="auto", progress=None):
                 continue
         if info and info.get("latency_ms") is not None:
             lat.append(info["latency_ms"])
-        decided = extract_ctl._decide_status(  # 채점용 예외: 상태 결정만 (DB 없이)
-            resp, p["body"]
-        )
+        decided = extract_ctl._decide_status(resp, p["body"], p["title"])  # 채점용 예외: 상태 결정만 (DB 없이)
         if decided["status"] == "모집 공고 아님":
             verdict = "모집 공고 아님"
         else:
@@ -152,7 +169,7 @@ def run_method(method, mode="auto", progress=None):
                 prof, {"id": 0, "status": decided["status"]}, decided["conditions"]
             )["verdict"]
         preds = [c for c in resp.get("conditions") or [] if isinstance(c, dict)]  # 근거 대조기와 같은 범위
-        checked = [c["verified"] for c in verifier.verify(resp, p["body"])["conditions"]]
+        checked = [c["verified"] for c in verifier.verify(resp, p["body"], p["title"])["conditions"]]
         rec_ok = bool(resp.get("is_recruitment", True)) == bool(lab["is_recruitment"])
         dl_pred = (resp.get("deadline") or "")[:10] or None
         lconds = lab["conditions"] if lab["is_recruitment"] else []
@@ -177,6 +194,7 @@ def run_method(method, mode="auto", progress=None):
             fabricated=len(checked) - sum(checked),
             verdict=verdict,
             verdict_ok=verdict == lab.get("expected_verdict"),
+            mismatch=mismatch_kind(verdict, lab.get("expected_verdict")),
             status=decided["status"],
             conditions=[{**c, "verified": v} for c, v in zip(preds, checked, strict=True)],
         )
@@ -207,6 +225,9 @@ def run_method(method, mode="auto", progress=None):
         "evidence_pass": pct(sum(r["verified"] for r in scored), pred_total),
         "fabricated": sum(r["fabricated"] for r in scored),
         "verdict_acc": pct(sum(r["verdict_ok"] for r in scored), len(scored)),
+        "mismatch_risky": sum(r["mismatch"] == RISKY for r in scored),
+        "mismatch_caution": sum(r["mismatch"] == CAUTION for r in scored),
+        "mismatch_safe": sum(r["mismatch"] == SAFE for r in scored),
         "check_ratio": pct(
             sum(1 for r in rows if r.get("status") == "확인 필요"), sum(1 for r in rows if r.get("status"))
         ),
@@ -275,6 +296,9 @@ def summary_table(result):
         ("지어냄", "fabricated"),
         ("확인필요%", "check_ratio"),
         ("판정일치%", "verdict_acc"),
+        ("위험", "mismatch_risky"),
+        ("주의", "mismatch_caution"),
+        ("안전", "mismatch_safe"),
         ("평균ms", "latency_avg_ms"),
         ("실패", "failed"),
         ("못돌림", "unavailable"),

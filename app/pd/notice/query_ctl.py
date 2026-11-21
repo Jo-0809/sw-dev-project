@@ -14,7 +14,7 @@ from ..source import subscription
 from ..user import profile
 from . import condition, engine, notice, view_log
 
-_ORDER = {"지원 가능": 0, "확인 필요": 1, "지원 불가": 2, "추출 중": 3, "모집 공고 아님": 4}
+_ORDER = {"지원 가능": 0, "확인 필요": 1, "지원 불가": 2, "추출 중": 3}
 
 
 def _dday(deadline):
@@ -35,8 +35,8 @@ def _sort_by_deadline(items):  # 지원 가능 공지를 마감일 순으로 정
 
 
 def _not_judged(n):
-    """조건 추출이 끝나지 않았거나 모집 공고가 아닌 공지의 판정 칸."""
-    verdict = "모집 공고 아님" if n["status"] == notice.NOT_RECRUIT else "추출 중"
+    """판정하지 않은 공지의 판정 칸. 모집 공고 아님은 판정이 아니라 수집 단계 분류라 판정 값이 없다 (None)."""
+    verdict = None if n["status"] == notice.NOT_RECRUIT else "추출 중"
     return {"verdict": verdict, "rows": [], "unmet": [], "reason": None}
 
 
@@ -44,7 +44,15 @@ def _collect_items(account_id, view):
     """프로필·관심 출처 공지를 판정해 목록 항목으로 만든다. 프로필이 없으면 items 없이 돌려준다 (예외 1)."""
     prof = profile.find(account_id)
     subs = subscription.find(account_id)
-    out = {"profile": prof, "subscriptions": subs, "items": [], "counts": {}, "view": view, "past_count": 0}
+    out = {
+        "profile": prof,
+        "subscriptions": subs,
+        "items": [],
+        "counts": {},
+        "view": view,
+        "past_count": 0,
+        "not_recruit": [],
+    }
     if prof is None:  # 예외 1
         return out, [], []
     judged = engine.judge(prof)  # 판정한다(프로필) : 판정 목록
@@ -64,6 +72,11 @@ def _collect_items(account_id, view):
                 "viewed": n["id"] in viewed,
             }
         )
+    # 모집 공고 아님(UC4 대안 3)은 판정 목록에서 빼고 전체 보기 맨 아래에 접어 둔다 (팀 결정 2026-11-21)
+    out["not_recruit"] = sorted(
+        [i for i in items if i["notice"]["status"] == notice.NOT_RECRUIT], key=lambda i: -i["notice"]["id"]
+    )
+    items = [i for i in items if i["notice"]["status"] != notice.NOT_RECRUIT]
     live = [i for i in items if not i["expired"]]
     past = [i for i in items if i["expired"]]
     out["past_count"] = len(past)
@@ -83,7 +96,8 @@ def request_list(account_id):  # 공고 목록을 요청한다(계정)
 
 
 def request_all(account_id, include_past=False):  # 전체 목록을 요청한다() : 판정 목록 전체
-    """대안 1 전체 보기: 지원 불가·확인 필요·모집 공고 아님까지. 마감일 미확인은 맨 뒤.
+    """대안 1 전체 보기: 지원 불가·확인 필요까지. 마감일 미확인은 맨 뒤.
+    모집 공고 아님은 판정이 아니라서 items 에 넣지 않고 not_recruit 로 따로 돌려준다 (화면 맨 아래에 접어 둠).
     include_past: 시연용으로 마감 지난 공고도 맨 아래에 (저장된 실제 공지 확인용)."""
     out, live, past = _collect_items(account_id, "all")
     dated = _sort_by_deadline([i for i in live if i["dday"] is not None])

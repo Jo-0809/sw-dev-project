@@ -5,11 +5,11 @@
 {% macro dday(i) -%}
   {%- if i.dday is none -%}<span class="dday none">미확인</span>
   {%- elif i.dday < 0 -%}<span class="dday none">마감</span>
-  {%- elif i.dday == 0 -%}<span class="dday {{ 'hot' if i.verdict not in ('지원 불가', '모집 공고 아님') }}">D-day</span>
-  {%- else -%}<span class="dday {{ 'hot' if i.dday <= 3 and i.verdict not in ('지원 불가', '모집 공고 아님') }}">D-{{ i.dday }}</span>{%- endif -%}
+  {%- elif i.dday == 0 -%}<span class="dday {{ 'hot' if i.verdict != '지원 불가' }}">D-day</span>
+  {%- else -%}<span class="dday {{ 'hot' if i.dday <= 3 and i.verdict != '지원 불가' }}">D-{{ i.dday }}</span>{%- endif -%}
 {%- endmacro %}
 {% macro badge(v) -%}
-  <span class="badge {{ {'지원 가능':'ok','지원 불가':'no','확인 필요':'chk','모집 공고 아님':'na','추출 중':'na'}[v] }}">{{ v }}</span>
+  <span class="badge {{ {'지원 가능':'ok','지원 불가':'no','확인 필요':'chk','추출 중':'na'}[v] }}">{{ v }}</span>
 {%- endmacro %}
 {% block content %}
 <div class="list-head">
@@ -46,7 +46,7 @@
   <tbody>
   {% for i in data['items'] %}
   {% set n = i.notice %}
-  <tr class="{{ 'dim' if i.verdict in ('지원 불가', '모집 공고 아님') or i.expired }} {{ 'chk-row' if i.verdict == '확인 필요' }}"
+  <tr class="{{ 'dim' if i.verdict == '지원 불가' or i.expired }} {{ 'chk-row' if i.verdict == '확인 필요' }}"
       onclick="location.href='/notices/{{ n.id }}?back={{ data.view }}'">
     <td>{{ dday(i) }}</td>
     <td><a href="/notices/{{ n.id }}?back={{ data.view }}" class="ttl">{{ n.title }}</a>
@@ -62,12 +62,23 @@
 <p class="hint">조건을 확인하지 못한 공고 {{ data.counts['확인 필요'] }}건은 <a href="/notices?view=all">전체 보기</a>에 '확인 필요'로 있어요.</p>
 {% endif %}
 {% endif %}
+{% if data.view == 'all' and data.not_recruit %}
+<details class="card not-recruit">
+  <summary>판정 대상이 아닌 공지 {{ data.not_recruit|length }}건 <span class="sub">(모집 공고가 아닌 안내 · 결과 발표 · 학사 절차)</span></summary>
+  <ul class="plain">
+    {% for i in data.not_recruit %}{% set n = i.notice %}
+    <li><a href="/notices/{{ n.id }}?back=all">{{ n.title }}</a> <span class="sub">{{ n.source_name }}{{ ' · 읽음' if i.viewed }}</span></li>
+    {% endfor %}
+  </ul>
+</details>
+{% endif %}
 {% if data.view == 'all' and data.past_count %}
 <p class="hint">{% if past %}마감 지난 공고 {{ data.past_count }}건을 맨 아래에 함께 보여 주고 있어요. <a href="/notices?view=all">숨기기</a>
   {% else %}마감 지난 공고 {{ data.past_count }}건은 숨겼어요. <a href="/notices?view=all&past=1">함께 보기</a>{% endif %}</p>
 {% endif %}
 <p class="legend">마감 3일 이내는 <span class="dday hot">D-3</span>처럼 검은 칸으로 표시해요. 판정은
-  {{ badge('지원 가능') }} {{ badge('확인 필요') }} {{ badge('지원 불가') }} — 색과 테두리 모양을 함께 써요.</p>
+  {{ badge('지원 가능') }} {{ badge('확인 필요') }} {{ badge('지원 불가') }} — 색과 테두리 모양을 함께 써요.
+  모집 공고가 아닌 공지는 판정하지 않고 전체 보기 맨 아래에 접어 둬요.</p>
 {% endblock %}
 {% block toast %}
 {% if saved == 'first' %}<div class="toast">프로필을 저장했어요. 이 정보로 판정한 공고예요.</div>{% endif %}

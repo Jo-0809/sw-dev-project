@@ -1,6 +1,6 @@
 """<<control>> 근거 대조기 — LLM이 돌려준 근거 문장이 원문에 실제로 있는지 대조한다 (UC4 정상 7).
 
-1) 근거 문장이 본문에 있는가        (공백·줄바꿈·일부 기호 차이는 무시)
+1) 근거 문장이 본문 또는 제목에 있는가 (공백·줄바꿈·일부 기호 차이는 무시)
 2) 값의 숫자가 근거 문장에 있는가    근거는 진짜인데 값을 잘못 읽은 경우를 거른다.
    예: 근거 "1, 2학년 재학생"인데 값 "3학년 이상" → 3 이 근거에 없음 → 통과 못 함
    숫자만 본다. '재학생'↔'휴학생'처럼 글자로만 다른 값은 아직 거르지 못한다 (한계).
@@ -117,12 +117,14 @@ def deadline_matches(deadline, evidence):
     return False
 
 
-def verify(response, body):  # 근거 문장을 대조한다(응답, 본문) : 검증 결과
-    nbody = _normalize(body)
+def verify(response, body, title=""):  # 근거 문장을 대조한다(응답, 본문) : 검증 결과
+    """근거는 본문 또는 제목에 있어야 한다. 제목도 원문의 일부다 (팀 결정 2026-11-21: 제목에만 있는 조건·마감일).
+    본문과 제목은 따로 본다 (둘을 이어 붙이면 경계에서 원문에 없는 문장이 생길 수 있어서)."""
+    texts = [_normalize(body)] + ([_normalize(title)] if title else [])
 
     def found(ev):
         ev_n = _normalize(ev)
-        return len(ev_n) >= 2 and ev_n in nbody
+        return len(ev_n) >= 2 and any(ev_n in t for t in texts)
 
     conds = []
     for c in response.get("conditions") or []:

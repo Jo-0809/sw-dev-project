@@ -6,6 +6,7 @@
 import re
 
 LABEL = "규칙 기반 (정규식)"
+ACADEMIC = re.compile(r"성적포기|성적취소|수강\s*(신청|정정)|휴학|복학|졸업\s*(신청|유예)")
 
 _DATE = re.compile(
     r"(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})\s*\.?\s*(?:일)?\s*(?:\([^)]*\))?\s*(\d{1,2}:\d{2})?"
@@ -22,6 +23,9 @@ def _sentences(body):
 def rule_based(title, body):
     text = title + "\n" + body
     res = {"is_recruitment": True, "deadline": None, "deadline_evidence": None, "conditions": []}
+    if ACADEMIC.search(title):  # 학사 절차 신청 (팀 결정 2026-11-21: 모집 공고 아님)
+        res["is_recruitment"] = False
+        return res
     if re.search(r"(명단|결과|합격자)\s*(안내|발표|공고)", title) and not re.search(r"모집|신청|접수", title):
         res["is_recruitment"] = False
         return res

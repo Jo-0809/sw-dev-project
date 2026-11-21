@@ -61,3 +61,38 @@ def test_example_provider_injected_only_in_demo(server):
     from app.pd.collect import extract_ctl
 
     assert extract_ctl._example_provider is examples.fallback
+
+
+def test_mismatch_kinds():
+    """채점 불일치 세 가지 (팀 결정 2026-11-21): 위험(숨김) / 주의(잘못 가능) / 안전(확인 필요로 돌림)."""
+    from app.demo.evaluation import CAUTION, RISKY, SAFE, mismatch_kind
+
+    assert mismatch_kind("지원 가능", "지원 가능") is None
+    assert mismatch_kind("지원 불가", "지원 가능") == RISKY
+    assert mismatch_kind("모집 공고 아님", "확인 필요") == RISKY
+    assert mismatch_kind("지원 가능", "지원 불가") == CAUTION
+    assert mismatch_kind("확인 필요", "지원 불가") == SAFE  # 아산재단
+
+
+def test_labels_follow_team_decisions():
+    """정답 라벨: 성적포기는 모집 공고 아님, 조우동은 조건 하나당 한 줄, 아산재단은 지원 불가, 검토 완료."""
+    from app.demo import evaluation
+
+    lab = evaluation.load_labels()
+    by = {n["ntt_sn"]: n for n in lab["notices"]}
+    assert lab["reviewed"] is True
+    assert by["8707902"]["is_recruitment"] is False and by["8707902"]["expected_verdict"] == "모집 공고 아님"
+    assert len(by["8748643"]["conditions"]) == 4
+    assert by["8800783"]["expected_verdict"] == "지원 불가"
+    s = evaluation.run_method("rule")["summary"]
+    assert s["mismatch_risky"] + s["mismatch_caution"] + s["mismatch_safe"] == s["scored"] - round(
+        s["verdict_acc"] * s["scored"] / 100
+    )
+
+
+def test_rule_based_academic_not_recruitment():
+    from app.demo.rule_based import rule_based
+
+    assert (
+        rule_based("2026학년도 2학기 성적포기 신청안내", "신청기간: ~10.13. 신청 바랍니다")["is_recruitment"] is False
+    )

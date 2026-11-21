@@ -334,3 +334,38 @@ def test_scheduler_runs_once_at_start(monkeypatch):
         assert abs((job.next_run_time - expected).total_seconds()) < 10  # 다음은 주기 뒤
     finally:
         sch.stop()
+
+
+def test_verifier_accepts_title_evidence():
+    """제목도 원문이다: 제목에만 있는 조건·마감일도 근거로 통과한다. 본문과 제목을 이어 붙인 가짜 문장은 안 된다."""
+    title = "희망사다리 장학생 신청기간 연장 안내(~9/30, 18:00)"
+    body = "신청대상: 학부 재학생"
+    r = verifier.verify(
+        {
+            "conditions": [
+                {"item": "재학 상태", "value": "학부 재학생", "evidence": "학부 재학생"},
+                {"item": "기타", "value": "연장", "evidence": "18:00)신청대상"},
+            ],
+            "deadline": "2026-09-30 18:00",
+            "deadline_evidence": "신청기간 연장 안내(~9/30, 18:00)",
+        },
+        body,
+        title,
+    )
+    assert [c["verified"] for c in r["conditions"]] == [True, False] and r["deadline_verified"]
+    assert (
+        verifier.verify(
+            {"conditions": [], "deadline": "2026-09-30 18:00", "deadline_evidence": "신청기간 연장 안내(~9/30, 18:00)"},
+            body,
+        )["deadline_verified"]
+        is False
+    )
+
+
+def test_prompt_v3_title_and_academic_rule():
+    """PROMPT_VERSION v3: 제목도 근거, 학사 절차 신청은 모집 공고 아님 (팀 결정 2026-11-21)."""
+    from app.pd.external import llm_client
+
+    assert llm_client.PROMPT_VERSION == "v3"
+    assert "제목과 본문만 보고" in llm_client.PROMPT and "성적포기" in llm_client.PROMPT
+    assert "본문만 보고" not in llm_client.PROMPT.replace("제목과 본문만 보고", "")
