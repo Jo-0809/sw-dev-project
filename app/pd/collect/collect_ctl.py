@@ -95,7 +95,7 @@ class CollectCtl:
         result["ended"] = why
         return result
 
-    def collect_source(self, src):  # 설계 외: 출처 1곳 처리 (출처마다 try 로 감싸려고 나눔)
+    def _collect_source(self, src):  # 설계 외: 출처 1곳 처리 (출처마다 try 로 감싸려고 나눔)
         result = _empty_result(src, replay=web.replaying(web.list_url(src)))
         try:
             numbers, path = _numbers(src)
@@ -162,7 +162,7 @@ class CollectCtl:
             results = []
             for s in subscription.registered_sources():  # 시연 모드가 아니면 모의·실패 확인 출처는 빠져 있음
                 try:
-                    results.append(self.collect_source(s))
+                    results.append(self._collect_source(s))
                 except Exception as e:  # 품질 시나리오 #2: 다른 출처 수집은 계속
                     msg = f"예상하지 못한 오류 {e.__class__.__name__}: {e}"
                     failure.record(s["id"], msg, stage="출처")

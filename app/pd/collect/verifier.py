@@ -19,7 +19,7 @@ _PUNCT = re.compile(r"[\s ·•\-–—~∼:：,，.。()（）\[\]「」『』\
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 
 
-def normalize(text):
+def _normalize(text):
     return _PUNCT.sub("", text or "")
 
 
@@ -66,7 +66,7 @@ def _times_after(text, pos, stop):
     return [(int(h), int(mi or mi2 or 0)) for h, mi, mi2 in _TIME.findall(seg)]
 
 
-def dates_in(text):
+def _dates_in(text):
     """근거 문장의 (연도 또는 None, 월, 일) 목록과 (시, 분) 목록. 연도 이어받기를 한 뒤의 값."""
     text = text or ""
     found = [(y, mo, d) for _, _, y, mo, d in _dated(text)]
@@ -74,7 +74,7 @@ def dates_in(text):
     return found, times
 
 
-def deadline_candidates(text):
+def _deadline_candidates(text):
     """마감일이 될 수 있는 날짜들. 기간(~·부터)이 있으면 그 끝 날짜, '까지' 앞 날짜, '마감' 뒤 날짜만.
     그런 표시가 없으면 근거 문장의 모든 날짜."""
     text = text or ""
@@ -109,7 +109,7 @@ def deadline_matches(deadline, evidence):
         return False
     y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
     hm = (int(m.group(4)), int(m.group(5))) if m.group(4) is not None else None
-    for cy, cm, cd, times in deadline_candidates(evidence):
+    for cy, cm, cd, times in _deadline_candidates(evidence):
         if (cm, cd) != (mo, d) or (cy is not None and cy != y):
             continue
         if hm is None or hm in times:
@@ -118,10 +118,10 @@ def deadline_matches(deadline, evidence):
 
 
 def verify(response, body):  # 근거 문장을 대조한다(응답, 본문) : 검증 결과
-    nbody = normalize(body)
+    nbody = _normalize(body)
 
     def found(ev):
-        ev_n = normalize(ev)
+        ev_n = _normalize(ev)
         return len(ev_n) >= 2 and ev_n in nbody
 
     conds = []

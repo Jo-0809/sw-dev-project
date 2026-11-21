@@ -163,7 +163,7 @@ def test_replay_real_sources(test_account):
     real = [s for s in source.all() if s["kind"] in ("preset", "test")]
     for s in real:
         subscription.save(test_account, s["id"])
-    results = [collector.collect_source(s) for s in real]
+    results = [collector._collect_source(s) for s in real]
     assert sum(r["new"] for r in results) == 10 and sum(r["review"] for r in results) == 2
     assert sum(r["failed"] for r in results) == 0
     typo = next(r for r in results if "오타" in r["source"])
@@ -184,8 +184,8 @@ def test_end_source_when_no_new(test_account):
     from app.pd.source import source
 
     src = next(s for s in source.all() if s["kind"] == "preset" and s["bbs_id"] == "1374")
-    collector.collect_source(src)
-    again = collector.collect_source(src)
+    collector._collect_source(src)
+    again = collector._collect_source(src)
     assert again["new"] == 0 and again["ended"] == "새 공지 없음" and again["error"] is None
 
 
@@ -195,7 +195,7 @@ def test_one_source_error_does_not_stop_others(mock_notices, monkeypatch):
     from app.pd.collect.collect_ctl import collector
 
     seen = []
-    real = collector.collect_source
+    real = collector._collect_source
 
     def flaky(src):
         seen.append(src["id"])
@@ -203,7 +203,7 @@ def test_one_source_error_does_not_stop_others(mock_notices, monkeypatch):
             raise AttributeError("일부러 낸 오류")
         return real(src)
 
-    monkeypatch.setattr(collector, "collect_source", flaky)
+    monkeypatch.setattr(collector, "_collect_source", flaky)
     out = collector.start()
     assert len(out["results"]) == len(seen) >= 2
     assert "AttributeError" in out["results"][0]["error"]
@@ -221,7 +221,7 @@ def test_collect_checks_robots_every_request(monkeypatch):
     monkeypatch.setattr(web, "read_robots", lambda url: asked.append(url) or (None, ""))
     monkeypatch.setattr(web, "_fetch", lambda url: (_ for _ in ()).throw(AssertionError("요청하면 안 됨")))
     src = next(s for s in source.all() if s["kind"] == "preset" and s["bbs_id"] == "1075")
-    r = collector.collect_source(src)
+    r = collector._collect_source(src)
     assert len(asked) == 2 and "robots.txt" in r["error"] and r["new"] == 0  # RSS, 목록 두 번 물음
 
 
@@ -249,7 +249,7 @@ def test_extract_error_marks_notice_and_continues(server, monkeypatch):
         return real(nid)
 
     monkeypatch.setattr(extract_ctl, "extract", flaky)
-    r = collector.collect_source(source.get(sid))
+    r = collector._collect_source(source.get(sid))
     assert r["new"] == 2 and r["extract_error"] == 1 and len(calls) == 2
     first = notice.get(calls[0])
     assert first["status"] == "확인 필요" and "추출 중 오류" in first["extract_method"]
@@ -307,3 +307,30 @@ def test_no_llm_in_production_marks_check(mock_notices, monkeypatch):
     extract_ctl.extract(nid)
     n = notice.get(nid)
     assert n["status"] == "확인 필요" and "LLM 미설정" in n["extract_note"] and condition.find(nid) == []
+
+
+def test_scheduler_runs_once_at_start(monkeypatch):
+    """서버를 켜면 한 번 바로 수집한다 (첫 수집이 주기만큼 밀리지 않게). 그 뒤로는 주기마다."""
+    import time
+    from datetime import datetime, timedelta
+
+    from app import config
+    from app.pd.collect import collect_scheduler
+    from app.pd.collect.collect_ctl import collector
+
+    calls = []
+    monkeypatch.setattr(config, "SCHEDULER_ENABLED", True)
+    monkeypatch.setattr(collector, "start", lambda: calls.append(1))  # 실제 수집은 하지 않음
+    sch = collect_scheduler.CollectScheduler()
+    sch.start()
+    try:
+        for _ in range(50):
+            if calls:
+                break
+            time.sleep(0.1)
+        assert calls == [1]  # 켜자마자 한 번
+        job = sch._scheduler.get_job(collect_scheduler.JOB_ID)
+        expected = datetime.now(collect_scheduler.TIMEZONE) + timedelta(minutes=collect_scheduler.INTERVAL_MIN)
+        assert abs((job.next_run_time - expected).total_seconds()) < 10  # 다음은 주기 뒤
+    finally:
+        sch.stop()

@@ -133,7 +133,18 @@ def test_detail_uses_judge_result(mock_notices, test_account):
     from app.pd.user import profile
 
     profile.save(test_account, **PROFILE)
-    items = query_ctl.request_list(test_account, "all")["items"]
+    items = query_ctl.request_all(test_account)["items"]
     for i in items[:5]:
         d = query_ctl.request_detail(test_account, i["notice"]["id"])
         assert d["judgement"]["verdict"] == i["verdict"]
+
+
+def test_view_log_viewed_with_notice_ids(mock_notices, test_account):
+    """열람 여부를 조회한다(계정, 임박): 공지 번호 목록을 주면 그 안에서만 본다 (UC6 대비)."""
+    from app.pd.notice import notice, view_log
+
+    ids = [n["id"] for n in notice.list_for(mock_notices)][:3]
+    view_log.save(test_account, ids[0])
+    assert ids[0] in view_log.viewed(test_account)
+    assert view_log.viewed(test_account, ids) == view_log.viewed(test_account) & set(ids)
+    assert ids[0] in view_log.viewed(test_account, ids[:1]) and view_log.viewed(test_account, []) == set()

@@ -104,6 +104,8 @@ def _violations():
                     continue
                 if dst_pkg not in allowed:
                     found.append(f"{mod} → {target}: 이 화면은 {sorted(allowed)} 패키지만 부를 수 있음")
+        if layer == "hci" and mod not in ("app.hci", "app.hci.common") and mod.split(".")[-1] not in HCI_PACKAGE:
+            found.append(f"{mod}: HCI_PACKAGE 에 없는 화면")  # import 가 없어도 표에 없으면 위반
         if layer == "pd":
             pkg = _pd_package(mod)
             if pkg is not None and pkg not in PACKAGE_ALLOWED:
@@ -150,6 +152,10 @@ def test_checker_catches_violations(tmp_path, monkeypatch):
     (fake / "pd" / "source" / "bad.py").write_text("from ..collect import parser\n", encoding="utf-8")
     (fake / "hci" / "list_view.py").write_text("from ..pd.user import account\nfrom ..dm import db\n", encoding="utf-8")
     (fake / "pd" / "notice" / "bad2.py").write_text("from ...demo import examples\n", encoding="utf-8")
+    (fake / "hci" / "new_view.py").write_text("x = 1\n", encoding="utf-8")  # 표에 없는 새 화면 (import 없음)
+    (fake / "hci" / "common.py").write_text("from ..pd.collect import collect_ctl\n", encoding="utf-8")
     monkeypatch.setitem(globals(), "APP", fake)
     v = "\n".join(_violations())
     assert "source → collect" in v and "dm 계층" in v and "['notice'] 패키지만" in v and "app.demo" in v
+    assert "app.hci.new_view: HCI_PACKAGE 에 없는 화면" in v
+    assert "app.hci.common → app.pd.collect" in v  # common.py 는 사용자 패키지만

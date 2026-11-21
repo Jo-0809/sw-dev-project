@@ -142,7 +142,9 @@ def run_method(method, mode="auto", progress=None):
                 continue
         if info and info.get("latency_ms") is not None:
             lat.append(info["latency_ms"])
-        decided = extract_ctl.decide_status(resp, p["body"])
+        decided = extract_ctl._decide_status(  # 채점용 예외: 상태 결정만 (DB 없이)
+            resp, p["body"]
+        )
         if decided["status"] == "모집 공고 아님":
             verdict = "모집 공고 아님"
         else:

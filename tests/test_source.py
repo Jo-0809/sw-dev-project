@@ -100,3 +100,15 @@ def test_source_list_hides_demo_kinds(test_account, monkeypatch):
     available, registered = source_ctl.request_list(test_account)
     assert all(s["kind"] not in ("mock", "test") for s in available + registered)
     assert typo["kind"] == "test" and source_ctl.register(test_account, typo["id"])[0] is False
+
+
+def test_find_posts_decides_in_source_ctl(server):
+    """UC3 예외 3 판단(게시글 목록 있음/없음)은 출처 등록 제어가 board_html 로 한다."""
+    from app.pd.source import source_ctl
+
+    good = BASE + "/mock/sw/na/ntt/selectNttList.do?mi=2001&bbsId=3001"
+    assert source_ctl._find_posts(good, None) == (True, True)
+    assert source_ctl._find_posts(BASE + "/nope/x", None) == (False, False)
+    typo = BASE + "/mock/main/na/ntt/selectNttList.do?mi=1376&bbsId=1076"
+    rss = BASE + "/mock/main/na/ntt/selectRssFeed.do?mi=1376&bbsId=1076"
+    assert source_ctl._find_posts(typo, rss) == (True, False)

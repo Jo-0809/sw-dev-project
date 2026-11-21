@@ -40,14 +40,13 @@ def _not_judged(n):
     return {"verdict": verdict, "rows": [], "unmet": [], "reason": None}
 
 
-def request_list(
-    account_id, view="possible", include_past=False
-):  # 공고 목록을 요청한다(계정) / 전체 목록을 요청한다()
+def _collect_items(account_id, view):
+    """프로필·관심 출처 공지를 판정해 목록 항목으로 만든다. 프로필이 없으면 items 없이 돌려준다 (예외 1)."""
     prof = profile.find(account_id)
     subs = subscription.find(account_id)
-    out = {"profile": prof, "subscriptions": subs, "items": [], "counts": {}, "view": view}
+    out = {"profile": prof, "subscriptions": subs, "items": [], "counts": {}, "view": view, "past_count": 0}
     if prof is None:  # 예외 1
-        return out
+        return out, [], []
     judged = engine.judge(prof)  # 판정한다(프로필) : 판정 목록
     viewed = view_log.viewed(account_id)
     items = []
@@ -73,14 +72,25 @@ def request_list(
         "전체": len(live),
         "확인 필요": sum(i["verdict"] == "확인 필요" for i in live),
     }
-    if view == "possible":
-        out["items"] = _sort_by_deadline([i for i in live if i["verdict"] == "지원 가능"])
-    else:
-        dated = _sort_by_deadline([i for i in live if i["dday"] is not None])
-        undated = sorted([i for i in live if i["dday"] is None], key=lambda i: _ORDER.get(i["verdict"], 9))
-        out["items"] = dated + undated  # 마감일 미확인은 맨 뒤
-        if include_past:  # 시연용: 마감 지난 공고도 맨 아래에 (저장된 실제 공지 확인용)
-            out["items"] += sorted(past, key=lambda i: i["notice"]["deadline"] or "", reverse=True)
+    return out, live, past
+
+
+def request_list(account_id):  # 공고 목록을 요청한다(계정)
+    """지원 가능 공고만, 마감일 가까운 순 (정상 흐름, 5-1 메인 화면)."""
+    out, live, _ = _collect_items(account_id, "possible")
+    out["items"] = _sort_by_deadline([i for i in live if i["verdict"] == "지원 가능"])
+    return out
+
+
+def request_all(account_id, include_past=False):  # 전체 목록을 요청한다() : 판정 목록 전체
+    """대안 1 전체 보기: 지원 불가·확인 필요·모집 공고 아님까지. 마감일 미확인은 맨 뒤.
+    include_past: 시연용으로 마감 지난 공고도 맨 아래에 (저장된 실제 공지 확인용)."""
+    out, live, past = _collect_items(account_id, "all")
+    dated = _sort_by_deadline([i for i in live if i["dday"] is not None])
+    undated = sorted([i for i in live if i["dday"] is None], key=lambda i: _ORDER.get(i["verdict"], 9))
+    out["items"] = dated + undated
+    if include_past:
+        out["items"] += sorted(past, key=lambda i: i["notice"]["deadline"] or "", reverse=True)
     return out
 
 

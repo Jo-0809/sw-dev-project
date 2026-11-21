@@ -22,7 +22,6 @@ from urllib.parse import urlparse
 import requests
 
 from ... import config
-from . import board_html
 
 
 class WebError(Exception):
@@ -135,26 +134,13 @@ def detail_url(source, ntt_sn):
 
 
 # ---- 클래스 다이어그램의 연산 ----------------------------------------------
-OK, UNREACHABLE, NO_POSTS = "ok", "unreachable", "no_posts"
-
-
-def check_reachable(url, rss=None):  # 접속을 확인한다(주소) : 접속 가능 여부
-    """출처 등록(UC3 대안 1) 때 쓴다. 접속만 보지 않고 게시글 목록이 있는지까지 본다 (해결안 3).
-      ok          : RSS 또는 목록 HTML에 게시물 번호가 있음
-      unreachable : 목록 주소가 응답하지 않음 (예외 1)
-      no_posts    : HTTP 200인데 게시물 번호가 없음 ('시스템안내' 화면 등, 예외 3)
-    rss 주소가 있으면 먼저 보고(UC4 정상 2와 같은 순서), 안 되면 목록 HTML을 본다."""
-    if rss:
-        try:
-            if board_html.extract_numbers_from_rss(_get(rss)):
-                return OK
-        except WebError:
-            pass
+def check_reachable(url):  # 접속을 확인한다(주소) : 접속 가능 여부
+    """(접속 가능 여부, 받은 본문). 응답이 없거나 4xx·5xx면 (False, None).
+    게시글이 있는지 같은 판단은 하지 않는다 (경계 클래스는 창구만). 판단은 출처 등록 제어가 한다."""
     try:
-        html = _get(url)
+        return True, _get(url)
     except WebError:
-        return UNREACHABLE
-    return OK if board_html.extract_numbers_from_list(html) else NO_POSTS
+        return False, None
 
 
 ROBOTS_CACHE_SEC = 3600

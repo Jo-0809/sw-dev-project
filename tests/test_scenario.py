@@ -48,7 +48,7 @@ def test_full_scenario(server):
     assert {r["path"] for r in res} == {"RSS", "목록 HTML"}
     # UC5
     aid = account.match("demo-t", "Tq7-demo-pw")
-    lst = query_ctl.request_list(aid, "possible")
+    lst = query_ctl.request_list(aid)
     titles = [i["notice"]["title"] for i in lst["items"]]
     assert titles == [
         "소프트웨어공학과 전공 멘토링 멘티 모집",
@@ -56,7 +56,7 @@ def test_full_scenario(server):
         "2026 동계 해외 단기연수 프로그램 참가자 모집",
         "2027학년도 1학기 교환학생 선발 공고",
     ]
-    allv = {i["notice"]["title"]: i["verdict"] for i in query_ctl.request_list(aid, "all")["items"]}
+    allv = {i["notice"]["title"]: i["verdict"] for i in query_ctl.request_all(aid)["items"]}
     assert allv["2026 동계 산학협력 현장실습(인턴십) 참여 학생 모집"] == "지원 불가"
     assert allv["대학 홍보 서포터즈 '경상누리' 7기 모집"] == "확인 필요"
     assert allv["2027학년도 1학기 학습 튜터링 튜터 모집"] == "확인 필요"
@@ -65,7 +65,7 @@ def test_full_scenario(server):
     nid = lst["items"][1]["notice"]["id"]
     page = s.get(f"{BASE}/notices/{nid}").text
     assert "지원할 수 있어요" in page and "원문 공지 보기" in page
-    assert query_ctl.request_list(aid, "possible")["items"][1]["viewed"]
+    assert query_ctl.request_list(aid)["items"][1]["viewed"]
     # 새 공지 게시 → 다시 수집 → 1건만 추가(중복 없음)
     mockdata.publish("8800108")
     res = collector.start()["results"]
@@ -73,9 +73,9 @@ def test_full_scenario(server):
     # LLM이 원문에 없는 조건을 낸 경우 → 근거 대조기가 걸러 확인 필요
     mockdata.publish("8800109")
     collector.start()
-    allv = {i["notice"]["title"]: i for i in query_ctl.request_list(aid, "all")["items"]}
+    allv = {i["notice"]["title"]: i for i in query_ctl.request_all(aid)["items"]}
     x = allv["○○장학재단 2027년도 장학생 모집"]
     assert x["verdict"] == "확인 필요" and "원문에 근거 없음" in x["notice"]["extract_note"]
-    assert len(query_ctl.request_list(aid, "possible")["items"]) == 5
+    assert len(query_ctl.request_list(aid)["items"]) == 5
     # 메인 진입(/)은 프로필이 있으면 공고 목록 화면(5-1)으로
     assert s.get(BASE + "/").url.endswith("/notices")

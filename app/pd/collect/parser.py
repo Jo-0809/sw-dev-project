@@ -140,7 +140,7 @@ def _block_text(node):
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
-def read_meta(soup):
+def _read_meta(soup):
     """상세 표의 머리말 행 (등록일, 구분, 부서, 연락처 등)."""
     out = {}
     for tr in soup.select(META_ROW_SELECTOR):
@@ -162,7 +162,7 @@ def _locate(soup):
     """(제목, 본문 칸, 등록일, 찾은 방법). 선택자로 먼저 찾고, 못 찾았을 때만 '시스템안내'인지 본다."""
     title = _first_text(soup, TITLE_SELECTORS)
     body = _first_node(soup, BODY_SELECTORS)
-    meta_date = read_meta(soup).get("등록일")  # 폴백이 머리말 칸을 지우기 전에 먼저 읽는다
+    meta_date = _read_meta(soup).get("등록일")  # 폴백이 머리말 칸을 지우기 전에 먼저 읽는다
     found = bool(title) and body is not None and bool(body.get_text(strip=True))
     if not found and is_error_page(soup):
         return None, None, "", "안내 화면"
@@ -217,7 +217,7 @@ def parse_detail(html, url, ntt_sn):  # 상세를 해석한다(상세 HTML) : �
     body = _block_text(body_node)
 
     needs_review = len(body) < 30 and bool(body_node.find_all("img"))
-    meta = {k: v for k, v in read_meta(soup).items() if k != "등록일"}
+    meta = {k: v for k, v in _read_meta(soup).items() if k != "등록일"}
     return {
         "ntt_sn": str(ntt_sn),
         "title": title,

@@ -40,7 +40,7 @@ STRIP_WORDS = (
 )
 
 
-def ntt_sn_from_url(url):
+def _ntt_sn_from_url(url):
     q = parse_qs(urlparse(url).query)
     for key in NTT_SN_KEYS:
         if q.get(key):
@@ -70,7 +70,7 @@ def _rss_links(xml_text):
 def extract_numbers_from_rss(xml_text):  # 게시물 번호를 추출한다(응답) : 번호 목록  (RSS)
     nums = []
     for link in _rss_links(xml_text):
-        n = ntt_sn_from_url(link)
+        n = _ntt_sn_from_url(link)
         if n and n not in nums:
             nums.append(n)
     return nums
@@ -121,7 +121,7 @@ def extract_numbers_from_list(html):  # 게시물 번호를 추출한다(응답)
         href, onclick = a.get("href") or "", a.get("onclick") or ""
         if not a.get_text(strip=True):
             continue
-        n = ntt_sn_from_url(href) if href.startswith(("http", "/", "?")) else None
+        n = _ntt_sn_from_url(href) if href.startswith(("http", "/", "?")) else None
         if not n:
             for key in DATA_KEYS:
                 v = (a.get(key) or "").strip()

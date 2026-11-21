@@ -4,15 +4,15 @@ import pytest
 from conftest import BASE
 
 
-def test_check_reachable_states(server):
-    """접속을 확인한다(주소): ok / unreachable(예외 1) / no_posts(예외 3)."""
+def test_check_reachable_only_fetches(server):
+    """접속을 확인한다(주소): (접속 가능 여부, 받은 본문)만 돌려준다. 게시글 유무는 판단하지 않는다 (경계 클래스는 창구)."""
     from app.pd.external import web
 
-    good = BASE + "/mock/sw/na/ntt/selectNttList.do?mi=2001&bbsId=3001"
-    assert web.check_reachable(good) == web.OK
-    assert web.check_reachable(BASE + "/nope/na/ntt/selectNttList.do?mi=1&bbsId=2") == web.UNREACHABLE
-    typo = BASE + "/mock/main/na/ntt/selectNttList.do?mi=1376&bbsId=1076"
-    assert web.check_reachable(typo, BASE + "/mock/main/na/ntt/selectRssFeed.do?mi=1376&bbsId=1076") == web.NO_POSTS
+    ok, text = web.check_reachable(BASE + "/mock/sw/na/ntt/selectNttList.do?mi=2001&bbsId=3001")
+    assert ok and "<html" in text.lower()
+    assert web.check_reachable(BASE + "/nope/na/ntt/selectNttList.do?mi=1&bbsId=2") == (False, None)
+    typo_ok, typo_text = web.check_reachable(BASE + "/mock/main/na/ntt/selectNttList.do?mi=1376&bbsId=1076")
+    assert typo_ok and typo_text  # HTTP 200 이면 게시글이 없어도 '접속 가능'
 
 
 def test_rss_without_lxml(monkeypatch):

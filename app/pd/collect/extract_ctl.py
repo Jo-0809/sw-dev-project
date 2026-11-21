@@ -36,7 +36,7 @@ def set_example_provider(fn):  # 설계 외: 시연용 대체 결과 주입
 
 
 # ---------------------------------------------------------------- 상태 결정
-def decide_status(response, body):  # 상태를 결정한다(응답, 검증 결과)
+def _decide_status(response, body):  # 설계 외: 상태를 결정한다(응답, 검증 결과)
     """LLM 응답(또는 대체 결과)과 본문으로 공지 상태를 정한다. DB를 쓰지 않아 채점에서도 쓴다."""
     if not response.get("is_recruitment", True):  # 대안 3: 모집 공고 아님
         return {
@@ -110,7 +110,7 @@ def extract(notice_id):  # 추출한다(공지)
             condition.save_all(notice_id, [])
             return
         response, method = fallback
-    r = decide_status(response, n["body"])
+    r = _decide_status(response, n["body"])
     condition.save_all(notice_id, r["conditions"])
     notice.save_result(
         notice_id,

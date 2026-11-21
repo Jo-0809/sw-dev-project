@@ -5,18 +5,19 @@
 대안 1   목록에 없는 주소 직접 입력. 순서:
            1) robots.txt 를 읽는다  — 응답이 아예 없으면 예외 1 (사이트에 접속할 수 없음)
            2) 판정한다            — 금지면 예외 2, 5xx로 규칙을 모르면 등록 보류 (명세 밖)
-           3) 접속을 확인한다      — 홈페이지 연결이 목록(·RSS)을 받아 게시물 번호가 있는지까지 본다
-                                     접속 불가면 예외 1, HTTP 200인데 게시글 목록이 없으면 예외 3
+           3) 접속을 확인한다      — 홈페이지 연결은 응답만 받아 오고, 게시물 번호가 있는지는 이 제어가
+                                     board_html 로 본다. 접속 불가면 예외 1, HTTP 200인데 게시글 목록이 없으면 예외 3
            4) 출처를 추가하고 관심 출처로 저장한다
 예외 1   '해당 주소에 접속할 수 없습니다'
 예외 2   '수집이 허용되지 않는 게시판입니다'
 예외 3   '공지를 가져올 수 없는 주소입니다' (게시판 번호 오타 → HTTP 200 '시스템안내' 화면)
-게시글 목록 확인은 홈페이지 연결(외부 패키지)이 한다 (팀 결정 해결안 3). 그래서 관심출처 → 공지수집 의존이 없다.
+게시글 목록 확인은 이 제어가 외부 패키지의 board_html 로 한다 (팀 결정 해결안 3. 홈페이지 연결은 응답만 가져오는 창구).
+관심출처 → 외부는 원래 있는 의존이라 관심출처 → 공지수집 의존(순환)이 생기지 않는다.
 """
 
 from urllib.parse import parse_qs, urlparse
 
-from ..external import web
+from ..external import board_html, web
 from . import robots, source, subscription
 
 MSG_BLOCKED = "수집이 허용되지 않는 게시판입니다"
@@ -99,6 +100,18 @@ def _parse_board_url(url):
     return None
 
 
+def _find_posts(url, rss):  # 설계 외: 게시글 목록이 있는지 (UC3 예외 3)
+    """(접속 가능 여부, 게시물 번호 있음). RSS 주소가 있으면 먼저 보고(UC4 정상 2와 같은 순서), 안 되면 목록 HTML."""
+    if rss:
+        ok, text = web.check_reachable(rss)  # 접속을 확인한다(주소)
+        if ok and board_html.extract_numbers_from_rss(text):
+            return True, True
+    ok, html = web.check_reachable(url)  # 접속을 확인한다(주소)
+    if not ok:
+        return False, False
+    return True, bool(board_html.extract_numbers_from_list(html))
+
+
 def register_address(account_id, url):  # 주소를 등록한다(계정, 주소) : (성공 여부, 메시지, 출처 번호)
     url = (url or "").strip()
     if not url.startswith(("http://", "https://")):
@@ -115,10 +128,10 @@ def register_address(account_id, url):  # 주소를 등록한다(계정, 주소)
         return False, MSG_BLOCKED, None  # 예외 2
     if verdict == robots.UNKNOWN:
         return False, MSG_UNKNOWN, None  # 명세 밖: 규칙을 모르면 등록하지 않음
-    state = web.check_reachable(url, rss)  # 3) 접속을 확인한다(주소)
-    if state == web.UNREACHABLE:
+    reachable, has_posts = _find_posts(url, rss)  # 3)
+    if not reachable:
         return False, MSG_UNREACHABLE, None  # 예외 1
-    if state == web.NO_POSTS:
+    if not has_posts:
         return False, MSG_NO_POSTS, None  # 예외 3
     p = urlparse(url)
     if board:  # 4) 추가한다(주소)

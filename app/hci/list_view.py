@@ -14,8 +14,10 @@ def notices(request: Request, view: str = "possible", saved: str = "", past: int
     aid = common.current_account(request)
     if not aid:
         return common.login_redirect()
-    view = "all" if view == "all" else "possible"
-    data = query_ctl.request_list(aid, view, include_past=bool(past and view == "all"))  # 공고 목록을 요청한다(계정)
+    if view == "all":
+        data = query_ctl.request_all(aid, include_past=bool(past))  # 전체 목록을 요청한다() (대안 1)
+    else:
+        data = query_ctl.request_list(aid)  # 공고 목록을 요청한다(계정)
     if data["profile"] is None:  # UC5 예외 1 → 2-1
         return common.redirect("/profile?first=1")
     return common.render(request, "list_view.html", aid, data=data, saved=saved, past=bool(past))

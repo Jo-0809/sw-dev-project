@@ -14,7 +14,7 @@ from .. import config
 from ..hci import common
 from ..pd.collect import extract_ctl, failure
 from ..pd.collect.collect_ctl import collector
-from ..pd.collect.collect_scheduler import scheduler
+from ..pd.collect.collect_scheduler import INTERVAL_MIN, scheduler
 from . import evaluation, examples, mockboard, seed
 
 router = APIRouter()
@@ -80,7 +80,7 @@ def _source_panel(request, account_id):
         last_run=collector.last_run,
         failures=failure.recent(8),
         next_run=scheduler.next_run(),
-        interval=scheduler.INTERVAL_MIN,
+        interval=INTERVAL_MIN,
         collecting=collector.is_running(),
         msg=request.query_params.get("msg", ""),
     )

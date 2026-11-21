@@ -5,6 +5,7 @@ version = "3.0"
 requires-python = ">=3.11"
 
 [tool.ruff]
+# 120자: 한글 문구·FastAPI 함수 시그니처가 길어 80자(ch13 12쪽 예시)로는 줄바꿈이 너무 잦다 (팀 선택)
 line-length = 120
 target-version = "py311"
 
