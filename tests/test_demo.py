@@ -96,3 +96,17 @@ def test_rule_based_academic_not_recruitment():
     assert (
         rule_based("2026학년도 2학기 성적포기 신청안내", "신청기간: ~10.13. 신청 바랍니다")["is_recruitment"] is False
     )
+
+
+def test_rule_based_academic_words_do_not_hide_recruitment():
+    """학사 낱말(휴학·복학·수강신청)이 있어도 제목에 모집·선발·참가·장학·공모가 있으면 모집 공고로 본다 (숨기면 위험 오류)."""
+    from app.demo.rule_based import rule_based
+
+    body = "신청 기간: 2026. 11. 1. ~ 11. 20. 신청 바랍니다"
+    for title in (
+        "복학생 멘토링 프로그램 참가자 모집",
+        "휴학생 대상 해외 봉사단 모집",
+        "수강신청 도우미(근로장학생) 모집",
+    ):
+        assert rule_based(title, body)["is_recruitment"] is True, title
+    assert rule_based("2026학년도 2학기 수강신청확인원 제출 안내", body)["is_recruitment"] is False

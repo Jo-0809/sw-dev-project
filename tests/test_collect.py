@@ -309,29 +309,23 @@ def test_no_llm_in_production_marks_check(mock_notices, monkeypatch):
     assert n["status"] == "확인 필요" and "LLM 미설정" in n["extract_note"] and condition.find(nid) == []
 
 
-def test_scheduler_runs_once_at_start(monkeypatch):
-    """서버를 켜면 한 번 바로 수집한다 (첫 수집이 주기만큼 밀리지 않게). 그 뒤로는 주기마다."""
-    import time
+def test_scheduler_runs_once_soon_after_start(monkeypatch):
+    """서버를 켜고 곧(포트가 열린 뒤) 한 번 수집한다. 첫 수집이 주기만큼 밀리지 않게. 그 뒤로는 주기마다."""
     from datetime import datetime, timedelta
 
     from app import config
     from app.pd.collect import collect_scheduler
     from app.pd.collect.collect_ctl import collector
 
-    calls = []
     monkeypatch.setattr(config, "SCHEDULER_ENABLED", True)
-    monkeypatch.setattr(collector, "start", lambda: calls.append(1))  # 실제 수집은 하지 않음
+    monkeypatch.setattr(collector, "start", lambda: None)  # 실제 수집은 하지 않음
     sch = collect_scheduler.CollectScheduler()
     sch.start()
     try:
-        for _ in range(50):
-            if calls:
-                break
-            time.sleep(0.1)
-        assert calls == [1]  # 켜자마자 한 번
         job = sch._scheduler.get_job(collect_scheduler.JOB_ID)
-        expected = datetime.now(collect_scheduler.TIMEZONE) + timedelta(minutes=collect_scheduler.INTERVAL_MIN)
-        assert abs((job.next_run_time - expected).total_seconds()) < 10  # 다음은 주기 뒤
+        first = (job.next_run_time - datetime.now(collect_scheduler.TIMEZONE)).total_seconds()
+        assert 0 < first <= collect_scheduler.FIRST_RUN_DELAY_SEC + 1  # 바로가 아니라 몇 초 뒤, 30분 뒤도 아님
+        assert job.trigger.interval == timedelta(minutes=collect_scheduler.INTERVAL_MIN)
     finally:
         sch.stop()
 

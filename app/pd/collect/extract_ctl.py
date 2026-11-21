@@ -36,8 +36,9 @@ def set_example_provider(fn):  # 설계 외: 시연용 대체 결과 주입
 
 
 # ---------------------------------------------------------------- 상태 결정
-def _decide_status(response, body, title=""):  # 설계 외: 상태를 결정한다(응답, 검증 결과)
-    """LLM 응답(또는 대체 결과)과 본문으로 공지 상태를 정한다. DB를 쓰지 않아 채점에서도 쓴다."""
+def decide_status(response, body, title=""):  # 설계 외: 상태 결정 (클래스 다이어그램 v4에는 +추출한다(공지)만 있음)
+    """LLM 응답(또는 대체 결과)과 본문으로 공지 상태를 정한다. DB를 쓰지 않아 채점(app/demo/evaluation.py)에서도 쓴다.
+    클래스 목록의 책임 '상태 결정'을 맡는 함수다. 채점이 직접 부르므로 공개 이름으로 둔다 (_ 예외를 늘리지 않으려고)."""
     if not response.get("is_recruitment", True):  # 대안 3: 모집 공고 아님
         return {
             "status": notice.NOT_RECRUIT,
@@ -110,7 +111,7 @@ def extract(notice_id):  # 추출한다(공지)
             condition.save_all(notice_id, [])
             return
         response, method = fallback
-    r = _decide_status(response, n["body"], n["title"])
+    r = decide_status(response, n["body"], n["title"])
     condition.save_all(notice_id, r["conditions"])
     notice.save_result(
         notice_id,
