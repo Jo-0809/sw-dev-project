@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}로그인{% endblock %}
+{% block mainclass %}login-wrap{% endblock %}
+{% block content %}
+<section class="login-intro">
+  <h1>놓칠뻔</h1>
+  <p class="lead">내가 지원할 수 있는 공고만, 마감 전에.</p>
+  <ul class="three">
+    <li><b>모아요</b> 등록한 학교·기관 게시판의 새 공지를 자동으로 모아요</li>
+    <li><b>골라요</b> 내 학과·학년·재학 상태로 지원 가능 여부를 판정해요</li>
+    <li><b>알려요</b> 판정 근거를 원문 문장과 함께 보여 줘요</li>
+  </ul>
+</section>
+<section class="card login-card">
+  <h2>로그인</h2>
+  {% if no_account %}<div class="alert">아직 계정이 없어요. 서버 폴더에서 <code>python tools/create_account.py 아이디</code>로 만들거나,
+    시연이면 <code>.env</code>에 <code>DEMO_MODE=1</code>을 넣고 다시 실행하세요.</div>{% endif %}
+  {% if error == 'mismatch' %}
+  <div class="alert">아이디 또는 비밀번호가 올바르지 않습니다</div>
+  {% endif %}
+  <form method="post" action="/login" novalidate id="loginForm">
+    <label>아이디
+      <input name="login_id" value="{{ login_id_value or '' }}" autocomplete="username"
+             class="{{ 'err' if error == 'mismatch' or (missing and 'login_id' in missing) }}">
+      {% if missing and 'login_id' in missing %}<span class="field-msg">필수 항목을 입력하세요</span>{% endif %}
+    </label>
+    <label>비밀번호
+      <input name="password" type="password" autocomplete="current-password"
+             class="{{ 'err' if error == 'mismatch' or (missing and 'password' in missing) }}">
+      {% if missing and 'password' in missing %}<span class="field-msg">필수 항목을 입력하세요</span>{% endif %}
+    </label>
+    <label class="check"><input type="checkbox" name="auto" {{ 'checked' if auto }}> 자동 로그인</label>
+    <button type="submit" class="btn primary wide">로그인</button>
+  </form>
+  {% if demo_mode %}<p class="hint">시연 계정 아이디: <b>{{ demo_id }}</b> · 비밀번호는 실행 창이나 <code>data/demo_account.txt</code>에 있어요 (<code>.env</code>의 DEMO_PASSWORD로 정할 수 있음)</p>{% endif %}
+</section>
+<script>
+// 1-3: 서버에 보내기 전에 빈칸을 화면에서 바로 알려 준다
+document.getElementById('loginForm').addEventListener('submit', e => {
+  let empty = false;
+  e.target.querySelectorAll('input[name=login_id], input[name=password]').forEach(i => {
+    const lab = i.parentElement; lab.querySelectorAll('.field-msg').forEach(m => m.remove());
+    i.classList.remove('err');
+    if (!i.value) { empty = true; i.classList.add('err');
+      const s = document.createElement('span'); s.className = 'field-msg'; s.textContent = '필수 항목을 입력하세요'; lab.appendChild(s); }
+  });
+  if (empty) e.preventDefault();
+});
+</script>
+{% endblock %}
