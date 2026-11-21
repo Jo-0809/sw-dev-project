@@ -1,0 +1,73 @@
+{
+  "_설명": "실제 경상국립대 공지 10건(2026-10-11 저장 응답)의 정답 라벨 초안. Claude가 본문을 읽고 작성했고 팀 검토를 거치지 않았다. 검토 후 reviewed 를 true 로 바꾼다. match 는 채점용 핵심어(공백 무시, 하나라도 LLM 값·근거에 있으면 같은 조건으로 본다). expected_verdict 는 아래 profile 기준, 현재 설계(평점·소득 같은 '기타' 조건은 프로필로 판정하지 않고 확인 필요)에서 나와야 하는 판정이다.",
+  "status": "초안 · 팀 검토 필요",
+  "reviewed": false,
+  "profile": {"university": "경상국립대학교", "department": "소프트웨어공학과", "grade": 2, "status": "재학"},
+  "notices": [
+    {"ntt_sn": "8800783", "site": "main", "title": "아산사회복지재단 2027년 의생명과학분야 대학 장학생 선발 안내",
+     "is_recruitment": true, "deadline": "2026-10-26",
+     "conditions": [
+       {"item": "학과", "value": "의생명과학분야 관련 학과", "match": ["의생명", "생명과학"]},
+       {"item": "학년", "value": "2027년 신규학기에 2·3·4학년 진학 예정", "match": ["학년"]},
+       {"item": "재학 상태", "value": "재학 중", "match": ["재학"]},
+       {"item": "소속 대학", "value": "재단이 선정한 대학", "match": ["선정"]},
+       {"item": "기타", "value": "성적평점 3.7/4.5 이상", "match": ["3.7", "3.54"]},
+       {"item": "기타", "value": "경제적 사유로 학업에 어려움", "match": ["경제"]},
+       {"item": "기타", "value": "타 기관 장학금 수혜 대상 아님", "match": ["타기관", "타장학", "수혜대상이아닌", "중복"]}
+     ],
+     "expected_verdict": "지원 불가", "review_note": "학과 조건(의생명과학분야)으로 지원 불가."},
+    {"ntt_sn": "8748643", "site": "main", "title": "2026학년도 2학기 조우동장학회 장학금 신청 안내",
+     "is_recruitment": true, "deadline": "2026-10-19",
+     "conditions": [
+       {"item": "기타", "value": "저소득층(소득 7구간 이내) 다문화가정 자녀", "match": ["다문화", "소득"]},
+       {"item": "기타", "value": "직전학기 10학점 이상 이수, 평균평점 2.6 이상", "match": ["2.6", "10학점"]}
+     ],
+     "expected_verdict": "확인 필요", "review_note": "소득·다문화·평점 조건은 프로필로 판정 못 함. 소득과 다문화를 한 조건으로 볼지 두 조건으로 볼지 팀 판단."},
+    {"ntt_sn": "8744623", "site": "main", "title": "2027년도 대산농촌재단 장학생 선발 안내",
+     "is_recruitment": true, "deadline": null,
+     "conditions": [
+       {"item": "소속 대학", "value": "국내 4년제 대학", "match": ["4년제", "국내"]},
+       {"item": "학년", "value": "2학년 2학기 이상", "match": ["2학년"]},
+       {"item": "재학 상태", "value": "재학생", "match": ["재학"]},
+       {"item": "기타", "value": "누계 평균 평점 3.5 이상", "match": ["3.5"]},
+       {"item": "기타", "value": "졸업 후 농업계 종사 의지·실천 계획", "match": ["농업"]}
+     ],
+     "expected_verdict": "확인 필요", "review_note": "마감일은 본문에 없고 첨부에만 있음 → null. '농학계열 우대'는 조건 아님."},
+    {"ntt_sn": "8707902", "site": "main", "title": "구)경남과기대 2026학년도 2학기 성적포기 및 동일교과목 성적취소 신청안내",
+     "is_recruitment": true, "deadline": "2026-10-13",
+     "conditions": [
+       {"item": "기타", "value": "5학기 이상 등록한 학생", "match": ["5학기"]}
+     ],
+     "expected_verdict": "확인 필요", "review_note": "학사 신청 공지를 모집 공고로 볼지 팀 판단 필요. 제목의 '구)경남과기대' 대상 제한은 본문에 없어 근거 대조를 통과할 수 없음. 사람 기준으로는 2학년(4학기)이면 지원 불가."},
+    {"ntt_sn": "8610403", "site": "main", "title": "2026학년도 2학기 학부생 수강신청확인원 제출 안내(구.과기대 포함)",
+     "is_recruitment": false, "deadline": null, "conditions": [],
+     "expected_verdict": "모집 공고 아님", "review_note": "수강신청한 모든 학생의 제출 의무 안내."},
+    {"ntt_sn": "8540681", "site": "main", "title": "2026학년도 2학기 2차 폐강강좌 및 학부생 3차 수강정정 안내(구.과기대 포함)",
+     "is_recruitment": false, "deadline": null, "conditions": [],
+     "expected_verdict": "모집 공고 아님", "review_note": "학사 일정 안내."},
+    {"ntt_sn": "8829161", "site": "main", "title": "글로벌인재포럼 2026 개최 안내",
+     "exclude": true, "exclude_reason": "본문이 이미지 한 장 (텍스트 없음) → 수집 단계에서 확인 필요, 추출 채점 제외",
+     "expected_verdict": "확인 필요"},
+    {"ntt_sn": "8827542", "site": "main", "title": "제16회 광주비엔날레 관람 및 할인 입장권 안내",
+     "exclude": true, "exclude_reason": "본문이 이미지 한 장 (텍스트 없음) → 수집 단계에서 확인 필요, 추출 채점 제외",
+     "expected_verdict": "확인 필요"},
+    {"ntt_sn": "8640162", "site": "ise", "title": "2026학년도 2학기 고졸 후학습자 장학사업(희망사다리 Ⅱ유형) 신규장학생 신청기간 연장 안내(~9/30, 18:00)",
+     "is_recruitment": true, "deadline": "2026-09-30",
+     "conditions": [
+       {"item": "재학 상태", "value": "학부 재학생", "match": ["재학"]},
+       {"item": "기타", "value": "대한민국 국적자", "match": ["국적"]},
+       {"item": "기타", "value": "고졸 후 재직 요건 (2년 이상, 중소·중견 1년 이상)", "match": ["재직"]},
+       {"item": "기타", "value": "직전학기 백분위 70점 이상, 이수학점 10학점 이상", "match": ["70점", "백분위", "10학점"]}
+     ],
+     "expected_verdict": "확인 필요", "review_note": "마감은 연장된 날짜(9/30 18:00)가 정답."},
+    {"ntt_sn": "8615327", "site": "ise", "title": "2027 독일 정부초청(DAAD) 섬머코스 장학생 선발 안내(~10/30)",
+     "is_recruitment": true, "deadline": "2026-10-30",
+     "conditions": [
+       {"item": "학과", "value": "전공 불문", "match": ["불문", "무관"]},
+       {"item": "학년", "value": "수혜 시점에 학사 2학년 이상 마침", "match": ["2학년"]},
+       {"item": "재학 상태", "value": "대학에 등록(학사·석사과정)", "match": ["등록", "재학", "학사", "석사"]},
+       {"item": "기타", "value": "B1 이상 독일어", "match": ["b1", "독일어"]}
+     ],
+     "expected_verdict": "확인 필요", "review_note": "독일어 B1 조건은 프로필로 판정 못 함."}
+  ]
+}

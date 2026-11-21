@@ -1,0 +1,111 @@
+{
+  "_설명": "GEMINI_API_KEY가 없을 때 모의 게시판 공지에 쓰는 '미리 추출해 둔 결과'. LLM 응답과 같은 형식이다. 8800109는 LLM이 원문에 없는 조건을 지어낸 경우를 재현한 것으로, 근거 대조기가 걸러 낸다.",
+  "8800101": {
+    "is_recruitment": true,
+    "deadline": "{D+2|iso} 23:59",
+    "deadline_evidence": "3. 신청 기간: {D-6} ~ {D+2} 23:59까지",
+    "conditions": [
+      {"item": "소속 대학", "value": "경상국립대학교 (본교)", "evidence": "- 본교 학부 재학생 1~3학년 (전공 무관)"},
+      {"item": "학년", "value": "1~3학년", "evidence": "- 본교 학부 재학생 1~3학년 (전공 무관)"},
+      {"item": "학과", "value": "전공 무관", "evidence": "- 본교 학부 재학생 1~3학년 (전공 무관)"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "- 본교 학부 재학생 1~3학년 (전공 무관)"}
+    ]
+  },
+  "8800102": {
+    "is_recruitment": true,
+    "deadline": "{D+4|iso} 18:00",
+    "deadline_evidence": "□ 접수 마감: {D+4} 18:00까지 국제교류본부 방문 제출",
+    "conditions": [
+      {"item": "소속 대학", "value": "경상국립대학교 (본교)", "evidence": "- 본교 재학생으로 2학년 이상인 자"},
+      {"item": "학년", "value": "2학년 이상", "evidence": "- 본교 재학생으로 2학년 이상인 자"},
+      {"item": "재학 상태", "value": "재학생 (휴학생 제외)", "evidence": "- 휴학생은 지원할 수 없음"}
+    ]
+  },
+  "8800103": {
+    "is_recruitment": true,
+    "deadline": "{D+3|iso} 17:00",
+    "deadline_evidence": "□ 신청 기한: {D+3} 17:00",
+    "conditions": [
+      {"item": "학과", "value": "공과대학 소속", "evidence": "□ 모집 대상: 공과대학 소속 4학년 재학생"},
+      {"item": "학년", "value": "4학년", "evidence": "□ 모집 대상: 공과대학 소속 4학년 재학생"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "□ 모집 대상: 공과대학 소속 4학년 재학생"}
+    ]
+  },
+  "8800104": {
+    "is_recruitment": true,
+    "deadline": "{D+5|iso} 17:00",
+    "deadline_evidence": "- 서류 마감: {D+5} 17:00",
+    "conditions": []
+  },
+  "8800105": {
+    "is_recruitment": true,
+    "deadline": "{D+9|iso} 16:00",
+    "deadline_evidence": "3. 접수 기간: {D-2} ~ {D+9} 16:00",
+    "conditions": [
+      {"item": "소속 대학", "value": "경상국립대학교 (본교)", "evidence": "가. 본교 재학생 (휴학생 포함, 단 파견 학기에 복학 가능한 자)"},
+      {"item": "재학 상태", "value": "재학생 (휴학생 포함)", "evidence": "가. 본교 재학생 (휴학생 포함, 단 파견 학기에 복학 가능한 자)"},
+      {"item": "학년", "value": "2학년 이상", "evidence": "나. 2학년 이상 (지원 시점 기준)"},
+      {"item": "학과", "value": "전 학과", "evidence": "다. 전 학과 지원 가능"}
+    ]
+  },
+  "8800106": {
+    "is_recruitment": true,
+    "deadline": "{D+7|iso} 23:59",
+    "deadline_evidence": "□ 신청 마감: {D+7} 23:59",
+    "conditions": [
+      {"item": "소속 대학", "value": "경상국립대학교 (본교)", "evidence": "- 본교 2~4학년 재학생"},
+      {"item": "학년", "value": "2~4학년", "evidence": "- 본교 2~4학년 재학생"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "- 본교 2~4학년 재학생"},
+      {"item": "기타", "value": "직전 학기 평점 평균 3.5 이상", "evidence": "- 직전 학기 평점 평균 3.5 이상인 자"}
+    ]
+  },
+  "8800107": {
+    "is_recruitment": false,
+    "deadline": null,
+    "deadline_evidence": null,
+    "conditions": []
+  },
+  "8800108": {
+    "is_recruitment": true,
+    "deadline": "{D+6|iso} 18:00",
+    "deadline_evidence": "□ 접수 기간: {D+0} ~ {D+6} 18:00",
+    "conditions": [
+      {"item": "소속 대학", "value": "경상국립대학교", "evidence": "□ 참가 대상: 경상국립대학교 학부 재학생 누구나 (전공·학년 무관)"},
+      {"item": "학과", "value": "전공 무관", "evidence": "□ 참가 대상: 경상국립대학교 학부 재학생 누구나 (전공·학년 무관)"},
+      {"item": "학년", "value": "학년 무관", "evidence": "□ 참가 대상: 경상국립대학교 학부 재학생 누구나 (전공·학년 무관)"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "□ 참가 대상: 경상국립대학교 학부 재학생 누구나 (전공·학년 무관)"}
+    ]
+  },
+  "8800109": {
+    "is_recruitment": true,
+    "deadline": "{D+8|iso}",
+    "deadline_evidence": "3. 접수 마감: {D+8}",
+    "conditions": [
+      {"item": "소속 대학", "value": "국내 4년제 대학", "evidence": "- 국내 4년제 대학 재학생"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "- 국내 4년제 대학 재학생"},
+      {"item": "학년", "value": "2학년 이상", "evidence": "2학년 이상 재학생"},
+      {"item": "기타", "value": "학자금 지원 구간 8구간 이하", "evidence": "- 학자금 지원 구간 8구간 이하"},
+      {"item": "기타", "value": "직전 학기 12학점 이상 이수, 평점 3.0 이상", "evidence": "- 직전 학기 12학점 이상 이수, 평점 3.0 이상"}
+    ]
+  },
+  "8800201": {
+    "is_recruitment": true,
+    "deadline": "{D+5|iso} 18:00",
+    "deadline_evidence": "□ 신청 마감: {D+5} 18:00",
+    "conditions": [
+      {"item": "학과", "value": "소프트웨어공학과", "evidence": "□ 참가 대상: 소프트웨어공학과 3~4학년 재학생"},
+      {"item": "학년", "value": "3~4학년", "evidence": "□ 참가 대상: 소프트웨어공학과 3~4학년 재학생"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "□ 참가 대상: 소프트웨어공학과 3~4학년 재학생"}
+    ]
+  },
+  "8800202": {
+    "is_recruitment": true,
+    "deadline": "{D+1|iso} 18:00",
+    "deadline_evidence": "□ 신청: {D+1} 18:00까지 학과 사무실 방문 신청",
+    "conditions": [
+      {"item": "학과", "value": "소프트웨어공학과", "evidence": "□ 대상: 소프트웨어공학과 1~2학년 재학생"},
+      {"item": "학년", "value": "1~2학년", "evidence": "□ 대상: 소프트웨어공학과 1~2학년 재학생"},
+      {"item": "재학 상태", "value": "재학생", "evidence": "□ 대상: 소프트웨어공학과 1~2학년 재학생"}
+    ]
+  }
+}

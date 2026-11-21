@@ -1,0 +1,1 @@
+{"url": "https://www.gnu.ac.kr/main/na/ntt/selectNttList.do?mi=1376&bbsId=1076", "status": 200, "text": "<!DOCTYPE html><html lang=\"ko\"><head><title>시스템안내</title><meta charset=\"utf-8\">\n<script language='javascript'>\nalert('잘못된 접속 정보입니다.');\nlocation.href='/main/lo/login/loginPage.do?type=ntt&bbsId=1076&tab=login';\n</script>\n</head></html>\n"}

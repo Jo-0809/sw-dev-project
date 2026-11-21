@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% set nav = 'compare' %}
+{% block title %}추출 API 비교{% endblock %}
+{% macro v(x, unit='%') -%}{{ '-' if x is none else (x ~ unit) }}{%- endmacro %}
+{% block content %}
+<h1>추출 API 비교</h1>
+<p class="sub">저장된 실제 경상국립대 공지로 조건 추출 방법을 같은 정답 라벨에 대어 채점해요. 시연·측정용 화면이에요 (클래스 다이어그램 밖).</p>
+
+<div class="banner">
+  <b>표본 {{ labels.notices|length }}건 중간 측정값</b> — 이미지 본문 {{ labels.notices|selectattr('exclude')|list|length }}건은 채점에서 빼요.
+  표본이 작아서 방법 사이의 차이를 결론으로 쓰기에는 부족해요.
+  <br>정답 라벨: <b>{{ labels.status }}</b>{% if not labels.reviewed %} · 팀이 검토한 뒤 <code>evaluation/labels.json</code>의 reviewed 를 true 로 바꾸세요{% endif %}.
+  판정 기준 프로필: {{ labels.profile.university }} · {{ labels.profile.department }} · {{ labels.profile.grade }}학년 · {{ labels.profile.status }}
+</div>
+
+<section class="card">
+  <h2>방법</h2>
+  <table class="tbl small">
+    <tr><th>방법</th><th>모델</th><th>상태</th><th>이번 실행</th></tr>
+    {% for a in avail %}
+    <tr><td><b>{{ a.name }}</b></td><td>{{ a.model }}</td><td>{{ a.note }}</td>
+      <td>{{ '실행' if a.usable else '건너뜀 (키·녹화 없음)' }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="hint">키는 <code>.env</code>의 <code>GEMINI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>에 넣어요. 호출한 응답은 <code>recordings/llm/</code>에 녹화돼서,
+    다음부터는 같은 공지를 다시 부르지 않고 녹화를 재생해요 (지금 LLM_MODE = {{ llm_mode }}). 예시 결과(사람이 작성)는 채점하지 않아요.</p>
+  <div class="actions left">
+    <form method="post" action="/compare/run"><input type="hidden" name="mode" value="auto">
+      <button class="btn primary" {{ 'disabled' if state.running }}>비교 실행 (녹화 우선)</button></form>
+    <form method="post" action="/compare/run"><input type="hidden" name="mode" value="replay">
+      <button class="btn" {{ 'disabled' if state.running }}>녹화만으로 다시 채점</button></form>
+    <form method="post" action="/compare/run" onsubmit="return confirm('녹화를 무시하고 API를 다시 불러요. 요금이 나갈 수 있어요. 진행할까요?')">
+      <input type="hidden" name="mode" value="live"><button class="btn ghost" {{ 'disabled' if state.running }}>API 다시 호출</button></form>
+  </div>
+  {% if state.running %}<div class="banner subtle"><span class="spin"></span>채점 중… {{ state.progress }}</div>{% endif %}
+  {% if state.error %}<div class="alert">실행 오류: {{ state.error }}</div>{% endif %}
+</section>
+
+{% if res %}
+<section class="card">
+  <h2>결과 <span class="sub">{{ res.at }} · mode {{ res.mode }}</span></h2>
+  <div class="scroll">
+  <table class="tbl small metrics">
+    <tr><th>방법</th><th>채점</th><th>모집 판별</th><th>마감일</th><th>조건 재현율</th><th>조건 정밀도</th>
+      <th>근거 통과율</th><th>지어낸 조건</th><th>확인 필요 비율</th><th>판정 일치</th><th>평균 응답</th><th>실패</th><th>응답 출처</th></tr>
+    <tr class="target"><td><b>목표</b><div class="sub">품질 시나리오 #1</div></td><td>100건</td><td>-</td><td>{{ targets.deadline_acc }}</td>
+      <td>{{ targets.cond_recall }}</td><td>-</td><td>-</td><td>{{ targets.fabricated }}</td><td>{{ targets.check_ratio }}</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+    {% for r in res.results %}{% set s = r.summary %}
+    <tr class="{{ 'on' if show == s.method }}"><td><a href="/compare?show={{ s.method }}#detail"><b>{{ s.name }}</b></a>
+        {% if s.model != '-' %}<div class="sub">{{ s.model }}</div>{% endif %}</td>
+      <td>{{ s.scored }}건{% if s.unavailable %}<div class="sub">못 돌림 {{ s.unavailable }}</div>{% endif %}</td>
+      <td>{{ v(s.recruit_acc) }}</td><td>{{ v(s.deadline_acc) }}</td><td>{{ v(s.cond_recall) }}</td>
+      <td>{{ v(s.cond_precision) }}</td><td>{{ v(s.evidence_pass) }}</td><td>{{ s.fabricated }}건</td><td>{{ v(s.check_ratio) }}</td>
+      <td><b>{{ v(s.verdict_acc) }}</b></td><td>{{ v(s.latency_avg_ms, ' ms') }}</td><td>{{ s.failed }}건</td>
+      <td>{{ {'rule':'규칙','live':'API 호출','replay':'녹화 재생'}[s.how[0]] if s.how|length == 1 else (s.how|join(', ') or '-') }}</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% if res.results|length == 1 %}<p class="hint">지금은 규칙 기반만 채점돼 있어요. API 키를 넣고 '비교 실행'을 누르면 Gemini·Anthropic 행이 생겨요.</p>{% endif %}
+</section>
+
+{% set pick = (res.results|selectattr('summary.method', 'equalto', show)|list or res.results[-1:])|first %}
+<section class="card" id="detail">
+  <h2>공지별 결과 · {{ pick.summary.name }}</h2>
+  <div class="scroll">
+  <table class="tbl small">
+    <tr><th>공지</th><th>모집 판별</th><th>마감일 (정답)</th><th>조건 맞음 / 정답</th><th>뽑은 조건</th><th>지어냄</th><th>판정 (기대)</th></tr>
+    {% for r in pick.rows %}
+    <tr>
+      <td>{{ r.title[:42] }}{% if r.title|length > 42 %}…{% endif %}<div class="sub">{{ r.ntt_sn }}</div></td>
+      {% if r.excluded %}<td colspan="6" class="sub">채점 제외 — {{ r.reason }}</td>
+      {% elif r.failed %}<td colspan="6" class="sub">실행 못 함 — {{ r.error }}</td>
+      {% else %}
+      <td>{{ '○' if r.recruit_ok else '✕' }} {{ '모집' if r.is_recruitment else '모집 아님' }}</td>
+      <td>{% if r.deadline_ok is none %}-{% else %}{{ '○' if r.deadline_ok else '✕' }} {{ r.deadline or '없음' }}{% if not r.deadline_ok %}<div class="sub">정답 {{ r.deadline_label or '없음' }}</div>{% endif %}{% endif %}</td>
+      <td>{{ r.matched }} / {{ r.label_conds }}</td>
+      <td>{% for c in r.conditions %}<div class="{{ '' if c.verified else 'fab' }}">{{ c.item }}: {{ c.value }}{% if not c.verified %} <b>(근거 없음)</b>{% endif %}</div>{% else %}-{% endfor %}</td>
+      <td>{{ r.fabricated }}</td>
+      <td>{{ '○' if r.verdict_ok else '✕' }} {{ r.verdict }}{% if not r.verdict_ok %}<div class="sub">기대 {{ r.expected_verdict }}</div>{% endif %}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</section>
+{% else %}
+<section class="card"><p class="empty">아직 실행한 결과가 없어요. '비교 실행'을 누르세요.</p></section>
+{% endif %}
+
+<details class="card">
+  <summary><b>지표 뜻</b></summary>
+  <ul>
+    <li><b>모집 판별</b> 모집 공고인지(신청을 받는지) 정답과 같은 비율</li>
+    <li><b>마감일</b> 모집 공고 중 마감 날짜(일 단위)가 정답과 같은 비율. 본문에 마감일이 없으면 '없음'이 정답</li>
+    <li><b>조건 재현율</b> 정답 조건 중 같은 항목·핵심어로 뽑힌 비율 · <b>조건 정밀도</b> 뽑은 조건 중 정답과 맞은 비율</li>
+    <li><b>근거 통과율</b> 뽑은 조건 중 근거 문장이 원문에 실제로 있는 비율 (근거 대조기) · <b>지어낸 조건</b> 통과 못 한 조건 수</li>
+    <li><b>확인 필요 비율</b> 표본 전체 중 시스템이 '확인 필요'로 저장한 공지 비율 (이미지 본문 포함). 품질 시나리오 #1은 확인 필요 공지도 분모에 넣는다</li>
+    <li><b>목표 행</b> 중간발표 05 품질 시나리오 #1 응답척도. 조건 재현율을 '조건 항목 단위 추출 일치율'에 대응시켰다</li>
+    <li><b>판정 일치</b> 위 프로필로 판정 엔진을 돌린 결과가 기대 판정과 같은 비율 (사용자가 실제로 보는 결과)</li>
+    <li><b>평균 응답</b> API 호출 시간. 녹화 재생이면 녹화할 때 걸린 시간</li>
+  </ul>
+</details>
+{% if state.running %}<script>setTimeout(() => location.reload(), 2000);</script>{% endif %}
+{% endblock %}

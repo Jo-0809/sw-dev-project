@@ -1,0 +1,358 @@
+@startuml 놓칠뻔_클래스다이어그램
+' 놓칠뻔 클래스 다이어그램 (시퀀스 다이어그램 UC1~UC6 기준)
+' 의존 45개 = 시퀀스 메시지(보낸 클래스 -> 받은 클래스), 연관 12개 = 실체 간 참조
+' 배치는 [hidden] 선으로 6줄 고정, 실제 관계선은 [norank]로 배치에 영향 없음
+skinparam dpi 150
+skinparam titleFontSize 24
+skinparam titleFontStyle bold
+skinparam shadowing false
+skinparam defaultFontName "Noto Sans CJK KR"
+skinparam classAttributeIconSize 0
+skinparam classBorderColor #2B2B2B
+skinparam ArrowColor #3A3A3A
+skinparam nodesep 90
+skinparam ranksep 70
+skinparam class {
+  BackgroundColor<<boundary>> #E9F0FA
+  BackgroundColor<<control>> #FBF3E4
+  BackgroundColor<<entity>> #E9F5EA
+}
+hide circle
+skinparam linetype ortho
+title 놓칠뻔 · 클래스 다이어그램
+
+class "로그인 화면" as LoginView <<boundary>> {
+  --
+  +로그인 화면을 연다()
+  +자동 로그인을 선택한다()
+  +입력한다(아이디, 비밀번호)
+  +로그인 버튼을 누른다()
+  +오류를 표시한다(메시지)
+}
+class "메인 화면" as MainView <<boundary>> {
+  --
+  +표시한다()
+}
+class "프로필 입력 화면" as ProfileView <<boundary>> {
+  --
+  +프로필 설정 메뉴를 선택한다()
+  +입력한다(소속 대학, 학과, 학년, 재학 상태)
+  +저장 버튼을 누른다()
+  +취소 버튼을 누른다()
+  +표시한다()
+  +완료 메시지를 표시한다()
+  +누락 항목과 메시지를 표시한다(누락 항목)
+  -입력 화면을 표시한다()
+  -입력란을 채운다(기존 값)
+}
+class "공고 목록 화면" as ListView <<boundary>> {
+  --
+  +공고 목록 화면을 선택한다()
+  +전체 보기를 선택한다()
+  +공지를 선택한다(번호)
+  +목록을 표시한다(지원 가능 목록)
+  +메시지를 표시한다(메시지)
+  -지원 불가 · 확인 필요까지 판정 결과와 함께 표시한다()
+}
+class "공고 상세 화면" as DetailView <<boundary>> {
+  --
+  +표시한다(본문, 참여 조건, 마감일, 판정 근거, 원문 링크)
+  +원문 링크를 선택한다()
+  -원문 페이지를 연다(원문 링크)
+}
+class "알림 발송 연결" as Notifier <<boundary>> {
+  --
+  +발송한다(채널, 메시지) : 결과
+}
+class "LLM API 연결" as LLMClient <<boundary>> {
+  --
+  +조건을 추출한다(본문) : 응답
+}
+class "홈페이지 연결" as Web <<boundary>> {
+  --
+  +접속을 확인한다(주소) : 접속 가능 여부
+  +robots.txt를 읽는다(주소) : 규칙
+  +RSS 피드를 요청한다(출처) : 응답
+  +목록 페이지를 요청한다(출처) : 응답
+  +상세 페이지를 요청한다(번호) : 상세 HTML
+}
+class "관심 출처 관리 화면" as SourceView <<boundary>> {
+  --
+  +관심 출처 관리 메뉴를 선택한다()
+  +출처를 선택한다(출처)
+  +등록 버튼을 누른다()
+  +주소를 입력한다(주소)
+  +해제를 선택한다(출처)
+  +갱신된 목록을 표시한다(등록 목록)
+  +오류를 표시한다(메시지)
+  -목록을 표시한다()
+}
+class "로그인 제어" as LoginCtl <<control>> {
+  --
+  +자동 로그인한다()
+  +로그인한다(아이디, 비밀번호)
+  -필수 입력을 확인한다()
+}
+class "프로필 제어" as ProfileCtl <<control>> {
+  -필수 항목
+  --
+  +프로필을 불러온다(계정) : 기존 값
+  +저장한다(입력값)
+  -필수 항목을 검사한다(입력값)
+}
+class "공고 조회 제어" as QueryCtl <<control>> {
+  --
+  +공고 목록을 요청한다(계정)
+  +전체 목록을 요청한다() : 판정 목록 전체
+  +상세를 요청한다(계정, 번호)
+  -지원 가능 공지를 마감일 순으로 정렬한다()
+}
+class "판정 엔진" as Engine <<control>> {
+  --
+  +판정한다(프로필) : 판정 목록
+  -지원 가능 · 지원 불가 · 확인 필요로 판정한다()
+}
+class "알림 제어" as NotifyCtl <<control>> {
+  -최대 재시도 횟수 = 3
+  --
+  +알림 발송을 시작한다()
+  -지원 가능 중 마감 3일 이내 공지를 고른다(판정 목록) : 임박
+  -열람하지 않은 공지만 남긴다(임박, 열람) : 선별
+  -메시지를 생성한다(선별)
+  -이 계정은 건너뛴다()
+}
+class "알림 스케줄러" as NotifySch <<control>> {
+  -발송 시각
+  --
+}
+class "근거 대조기" as Verifier <<control>> {
+  --
+  +근거 문장을 대조한다(응답, 본문) : 검증 결과
+}
+class "조건 추출 제어" as ExtractCtl <<control>> {
+  -최대 재시도 횟수 = 3
+  --
+  +추출한다(공지)
+}
+class "수집 제어" as CollectCtl <<control>> {
+  --
+  +수집을 시작한다()
+  -신규만 선별한다(번호 목록, 저장된 번호) : 신규 번호
+  -이 출처의 수집을 종료한다()
+}
+class "응답 해석기" as Parser <<control>> {
+  --
+  +게시물 번호를 추출한다(응답) : 번호 목록
+  +게시글 영역을 확인한다(상세 HTML) : 게시글 영역 여부
+  +상세를 해석한다(상세 HTML) : 공지
+}
+class "수집 스케줄러" as CollectSch <<control>> {
+  -수집 주기
+  --
+}
+class "출처 등록 제어" as SourceCtl <<control>> {
+  --
+  +목록을 요청한다(계정) : 출처 목록, 등록 목록
+  +등록한다(계정, 출처)
+  +주소를 등록한다(계정, 주소)
+  +해제한다(계정, 출처)
+}
+class "수집 허용 규칙" as Robots <<control>> {
+  --
+  +판정한다(규칙, 주소) : 허용 여부
+}
+class "로그인 세션" as Session <<entity>> {
+  -세션 토큰
+  -만료 시각
+  -자동 로그인 여부
+  --
+  +저장된 세션을 조회한다() : 세션
+  +생성한다(계정)
+}
+class "계정" as Account <<entity>> {
+  -아이디
+  -비밀번호
+  --
+  +대조한다(아이디, 비밀번호) : 일치 여부
+}
+class "학적 프로필" as Profile <<entity>> {
+  -소속 대학
+  -학과
+  -학년
+  -재학 상태
+  --
+  +조회한다(계정) : 프로필
+  +저장한다(소속 대학, 학과, 학년, 재학 상태)
+}
+class "알림 채널" as Channel <<entity>> {
+  -채널 종류
+  -수신 주소
+  --
+  +채널이 설정된 계정을 조회한다() : 계정과 채널 목록
+}
+class "열람 기록" as ViewLog <<entity>> {
+  -열람 시각
+  --
+  +저장한다(계정, 번호, 열람 시각)
+  +열람 여부를 조회한다(계정, 임박) : 열람 여부
+}
+class "알림 발송 기록" as SendLog <<entity>> {
+  -발송 시각
+  -결과
+  -재시도 횟수
+  --
+  +기록한다(계정, 공지, 발송 시각, 결과)
+  +실패를 기록한다(계정, 공지, 재시도 횟수)
+}
+class "참여 조건" as Condition <<entity>> {
+  -조건 항목
+  -값
+  -근거 문장
+  --
+  +조회한다(공지 목록) : 조건 목록
+  +조회한다(번호) : 참여 조건
+  +저장한다(조건 항목, 값, 근거 문장)
+}
+class "공지" as Notice <<entity>> {
+  -번호
+  -제목
+  -등록일
+  -본문
+  -원문 링크
+  -첨부 링크
+  -마감일
+  -상태
+  --
+  +조회한다() : 공지 목록
+  +조회한다(출처) : 저장된 번호
+  +조회한다(번호) : 공지
+  +저장한다(공지, 상태)
+  +저장한다(공지, 마감일, 상태)
+}
+class "수집 실패 기록" as Failure <<entity>> {
+  -게시물 번호
+  -실패 단계
+  -사유
+  -시각
+  --
+  +기록한다(출처, 사유)
+  +기록한다(출처, 번호, 사유)
+}
+class "출처" as Source <<entity>> {
+  -이름
+  -사이트 주소
+  -게시판 식별값
+  -RSS 제공 여부
+  --
+  +조회한다() : 출처 목록
+  +추가한다(주소) : 출처
+  +RSS 제공 여부를 확인한다(출처) : 제공 여부
+}
+class "관심 출처" as Subscription <<entity>> {
+  --
+  +조회한다(계정) : 등록 목록
+  +등록된 출처를 조회한다() : 출처 목록
+  +저장한다(계정, 출처)
+  +제거한다(계정, 출처)
+}
+
+' ===== 배치용 보이지 않는 선 (6줄 배치) =====
+LoginView -[hidden]right- MainView
+MainView -[hidden]right- ProfileView
+ProfileView -[hidden]right- ListView
+ListView -[hidden]right- DetailView
+DetailView -[hidden]right- Notifier
+Notifier -[hidden]right- NotifySch
+LoginCtl -[hidden]right- ProfileCtl
+ProfileCtl -[hidden]right- QueryCtl
+QueryCtl -[hidden]right- Engine
+Engine -[hidden]right- NotifyCtl
+Session -[hidden]right- Account
+Account -[hidden]right- Profile
+Profile -[hidden]right- Channel
+Channel -[hidden]right- ViewLog
+ViewLog -[hidden]right- SendLog
+SendLog -[hidden]right- Condition
+Condition -[hidden]right- Notice
+Subscription -[hidden]right- Source
+Source -[hidden]right- Failure
+Robots -[hidden]right- SourceCtl
+SourceCtl -[hidden]right- Parser
+Parser -[hidden]right- CollectCtl
+CollectCtl -[hidden]right- ExtractCtl
+ExtractCtl -[hidden]right- Verifier
+SourceView -[hidden]right- Web
+Web -[hidden]right- CollectSch
+CollectSch -[hidden]right- LLMClient
+LoginView -[hidden]down- LoginCtl
+LoginCtl -[hidden]down- Session
+Session -[hidden]down- Subscription
+Subscription -[hidden]down- Robots
+Robots -[hidden]down- SourceView
+
+' ===== 의존: 시퀀스 다이어그램 메시지 (보낸 클래스 → 받은 클래스) =====
+LoginView .[norank].> LoginCtl
+LoginCtl .[norank].> LoginView
+LoginCtl .[norank].> Account
+LoginCtl .[norank].> Session
+LoginCtl .[norank].> MainView
+ProfileView .[norank].> ProfileCtl
+ProfileCtl .[norank].> ProfileView
+ProfileCtl .[norank].> Profile
+ProfileView .[norank].> MainView
+SourceView .[norank].> SourceCtl
+SourceCtl .[norank].> SourceView
+SourceCtl .[norank].> Source
+SourceCtl .[norank].> Subscription
+SourceCtl .[norank].> Web
+SourceCtl .[norank].> Robots
+CollectSch .[norank].> CollectCtl
+CollectCtl .[norank].> Subscription
+CollectCtl .[norank].> Source
+CollectCtl .[norank].> Web
+CollectCtl .[norank].> Parser
+CollectCtl .[norank].> Notice
+CollectCtl .[norank].> Failure
+CollectCtl .[norank].> ExtractCtl
+ExtractCtl .[norank].> LLMClient
+ExtractCtl .[norank].> Verifier
+ExtractCtl .[norank].> Notice
+ExtractCtl .[norank].> Condition
+ListView .[norank].> QueryCtl
+QueryCtl .[norank].> ListView
+ListView .[norank].> ProfileView
+QueryCtl .[norank].> Profile
+QueryCtl .[norank].> Engine
+QueryCtl .[norank].> Notice
+QueryCtl .[norank].> Condition
+QueryCtl .[norank].> DetailView
+QueryCtl .[norank].> ViewLog
+Engine .[norank].> Notice
+Engine .[norank].> Condition
+NotifySch .[norank].> NotifyCtl
+NotifyCtl .[norank].> Channel
+NotifyCtl .[norank].> Profile
+NotifyCtl .[norank].> Engine
+NotifyCtl .[norank].> ViewLog
+NotifyCtl .[norank].> Notifier
+NotifyCtl .[norank].> SendLog
+
+' ===== 연관: 실체 간 참조 =====
+Account "1" -[norank]- "0..*" Session
+Account "1" -[norank]- "0..1" Profile
+Account "1" -[norank]- "0..*" Channel
+Account "1" -[norank]- "0..*" ViewLog
+Account "1" -[norank]- "0..*" SendLog
+Account "1" -[norank]- "0..*" Subscription
+Notice "1" -[norank]- "0..*" ViewLog
+Notice "1" -[norank]- "0..*" SendLog
+Notice "1" *-[norank]- "0..*" Condition
+Source "1" -[norank]- "0..*" Notice
+Source "1" -[norank]- "0..*" Failure
+Source "1" -[norank]- "0..*" Subscription
+
+legend right
+  점선 화살표: 의존 · 실선: 연관(숫자는 다중성) · ◆: 합성
+  참조 속성(계정·공지·출처)은 연관선으로 표시
+endlegend
+@enduml
