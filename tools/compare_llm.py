@@ -8,13 +8,14 @@
 키는 .env 의 GEMINI_API_KEY / ANTHROPIC_API_KEY 에서 읽는다. 결과는 evaluation/results/ 에 저장된다.
 표본이 10건(채점 8건)이라 '중간 측정값'이다.
 """
+
 import argparse
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")   # Windows 콘솔에서 한글 깨짐 방지
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows 콘솔에서 한글 깨짐 방지
 
 from app.demo import evaluation  # noqa: E402
 

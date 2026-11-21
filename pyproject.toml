@@ -1,0 +1,21 @@
+# 코드 검사·정리 설정 (ruff). 실행: ruff format . && ruff check .
+[project]
+name = "notchilppeon"
+version = "3.0"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N802"]
+"app/demo/mockboard.py" = ["N803"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]

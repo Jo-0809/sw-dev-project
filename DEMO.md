@@ -1,4 +1,4 @@
-# 놓칠뻔 — SPRINT 1~2 데모 (v2.7)
+# 놓칠뻔 — SPRINT 1~2 데모 (v3.0)
 
 > 내가 지원할 수 있는 공고만, 마감 전에. (팀 이김조 · 소프트웨어개발론 PBL)
 
@@ -13,6 +13,51 @@ LMS 최종본과 대조 완료 (조원 확인, 2026-11-14). 그보다 앞선 판
 UI 설계서의 화면 번호(1-1, 5-3 등)는 그대로 쓴다.
 
 ## 0. 바뀐 것
+
+### v3.0 (2026-11-21, 구조 개편 — 사전준비 검토본·이용준 피드백 반영)
+
+기능과 화면 흐름은 v2.7과 같다. 폴더를 **3계층(HCI → PD → DM) × 패키지 다이어그램 6개**로 다시 나눴다.
+
+| 바뀐 것 | 내용 |
+|---|---|
+| 폴더 | `app/hci`(화면) · `app/pd/{user,source,collect,notice,notify,external}` · `app/dm`(DB 연결·스키마) · `app/demo`(시연) · `app/main.py`(조립만). 아래 '폴더 구조' 참고 |
+| 순환 의존 해소 (해결안 3) | UC3 예외 3(게시글 목록 없음)을 홈페이지 연결의 `check_reachable(주소, RSS 주소)`가 판정한다 (`ok`·`unreachable`·`no_posts`). 게시물 번호 읽기는 `pd/external/board_html.py`(설계 외 보조 모듈)로 떼어 응답 해석기와 함께 쓴다. 관심출처 → 공지수집 의존이 없어져 패키지 의존은 다이어그램대로 10개, 순환 없음 |
+| 주소 직접 입력 순서 | robots.txt 읽기(응답 없으면 예외 1) → 판정(금지면 예외 2, 5xx면 보류) → 접속 확인(접속 불가 예외 1, 목록 없음 예외 3) → 등록 |
+| SQL 위치 (B안) | 테이블별 SQL은 그 실체 모듈(`account.py`, `notice.py` …)에, 연결·스키마는 `dm/db.py`·`dm/schema.sql` |
+| 모듈 함수 | 제어·실체는 모듈 함수로. 상태를 가진 수집 제어(`CollectCtl`, 잠금·마지막 결과)와 수집 스케줄러(`CollectScheduler`)만 클래스 |
+| 판정 엔진 | `judge(profile)` — 프로필 주인의 관심 출처를 엔진이 직접 조회한다. 상세 화면도 같은 결과를 쓴다. 공지 하나 판정(`_judge_one`)은 내부용 (채점·테스트만 예외로 부름) |
+| 수집 제어 | 대안 2를 `_end_source()`로 드러냄 (결과의 `ended = '새 공지 없음'`). 예외 이름은 `SourceSkippedError`, `PostAreaMissingError`, `LLMUnavailableError` |
+| 조건 추출 제어 | `decide` → `decide_status`, `MAX_RETRY` 상수. 예시 결과는 `set_example_provider()`로 **넣어 주는** 방식 (조건 추출 제어가 `app.demo`를 부르지 않음). 운영에서 키·녹화가 없으면 조건을 지어내지 않고 **'확인 필요 · LLM 미설정'** (규칙 기반은 시연 모드 전용, `app/demo/rule_based.py`) |
+| 시연 패널 | '지금 수집'·수집 결과·실패 기록·시연 초기화·수집 중 안내·추출 API 비교 메뉴를 `app/demo/demo_routes.py`가 화면에 끼운다. 운영(DEMO_MODE=0)에서는 `/collect`도 없다 (30분 주기 수집만) |
+| 시연 출처 숨김 | `source.all()`, 관심 출처 조회가 시연 모드가 아니면 모의·실패 확인 출처를 뺀다 |
+| 구조 검사 | `tests/test_architecture.py`: 계층 금지(HCI↛DM, PD↛HCI, DM↛HCI·PD), 패키지 의존 10개, 화면별 패키지, 운영 코드의 `app.demo` 불러오기 금지 |
+| 코드 정리 | `pyproject.toml`(ruff 설정), Python용 `.gitignore`. `ruff format` + `ruff check` 0건 (v2.7: 위반 20건, 정리 대상 25파일) |
+| 테스트 | 52개 → 66개, 파일을 패키지별로 나눔 (`tests/conftest.py` + `test_<패키지>.py`) |
+
+### 폴더 구조 (v3.0)
+
+```
+app/
+  main.py            앱 조립 (화면 라우터, 시작 시 DB·출처 준비, 시연 모드면 app/demo 설치) — 구조 검사 제외
+  config.py          설정 (.env)
+  hci/               HCI 계층: 화면
+    common.py          쿠키 로그인 확인·화면 그리기·패널 등록 (설계 외 보조, 사용자 패키지만 씀)
+    main_view.py       메인 진입(/) → 로그인 / 프로필 입력 / 공고 목록(5-1)으로 보냄
+    login_view.py  profile_view.py  source_view.py  list_view.py  detail_view.py
+    templates/*_view.html, base.html   static/
+  pd/                PD 계층: 6개 패키지
+    user/      login_ctl, profile_ctl | account, session(로그인 세션), profile, channel(SPRINT 3)
+    source/    source_ctl, robots(수집 허용 규칙) | source, subscription(관심 출처) | presets(실제 게시판 목록)
+    collect/   collect_scheduler, collect_ctl, parser(응답 해석기), extract_ctl, verifier | failure(수집 실패 기록)
+    notice/    query_ctl, engine | notice, condition, view_log
+    notify/    SPRINT 3 뼈대 (notify_scheduler, notify_ctl, send_log)
+    external/  web(홈페이지 연결), llm_client(LLM API 연결), notifier(SPRINT 3), board_html(설계 외 보조)
+  dm/                DM 계층: db.py(연결·스키마 실행), schema.sql
+  demo/              시연·측정 (계층 밖): mockboard·mockdata, examples, rule_based, evaluation,
+                     seed(시연 계정·출처·초기화), demo_routes(시연 화면·패널), templates/
+tests/  conftest.py, test_architecture, test_user, test_source, test_collect, test_notice, test_external,
+        test_demo, test_scenario
+```
 
 ### v2.7 (2026-11-21, '제외' 붙여 쓰기)
 
@@ -101,7 +146,8 @@ run.bat
 >
 > 실제로 쓸 때는 `DEMO_MODE=0`. 시연 초기화는 DB 전체를 지운다. 이때는 회원가입 화면이 없으니
 > `python tools/create_account.py 아이디`로 계정을 먼저 만든다 (비밀번호는 실행 중에 입력, 8자 이상).
-> 운영 모드에서 API 키가 없으면 규칙 기반 추출만 쓰므로 판정 정확도가 낮다 (5장 기준선 참고).
+> 운영 모드에서 API 키도 녹화도 없으면 조건을 추출하지 않고 공지를 '확인 필요 · LLM 미설정'으로 둔다 (지어내지 않음).
+> 운영 모드에는 '지금 수집' 버튼이 없다. 수집 스케줄러가 30분마다 수집한다.
 
 ## 2. 시연 시나리오
 
@@ -237,10 +283,10 @@ run.bat
 
 | 백로그 | 구현 | 비고 |
 |---|---|---|
-| 15 계정/프로필 저장 구조 | SQLite, 비밀번호 PBKDF2, 로그인 세션(자동 로그인 30일) | SQL은 PostgreSQL에서도 되는 문법으로, DB 접근은 `entity.py`에만 |
+| 15 계정/프로필 저장 구조 | SQLite, 비밀번호 PBKDF2, 로그인 세션(자동 로그인 30일) | SQL은 PostgreSQL에서도 되는 문법으로. 연결·스키마는 `app/dm`, 테이블별 SQL은 실체 모듈 |
 | 1 프로필 입력 | 소속 대학·학과·학년·재학 상태, 필수 학과·학년 | **학점은 받지 않음** (팀 결정) |
 | 2 관심 출처 등록 | 목록 선택 등록·해제, 주소 직접 입력(접속·robots.txt 확인) | 목록 선택도 robots.txt 확인 |
-| 3 공지 자동 수집 | RSS 우선 → 목록 HTML 폴백, 신규만 선별, 30분 주기 + '지금 수집' | 요청마다 robots.txt, 출처 간 연쇄 중단 없음 |
+| 3 공지 자동 수집 | RSS 우선 → 목록 HTML 폴백, 신규만 선별, 30분 주기 (+ 시연 모드의 '지금 수집') | 요청마다 robots.txt, 출처 간 연쇄 중단 없음 |
 | 16 LLM API 연동 | Gemini·Anthropic, JSON 강제 + 형식 검사, 3회 재시도, 녹화·재생 | |
 | 4 참여 조건 추출 | 항목 + 값 + 근거 문장, 근거·숫자 대조 | 이미지 본문은 확인 필요 |
 | 5 지원 자격 자동 판정 | 규칙 기반 매칭 | 판정 결과는 저장하지 않음 |
@@ -250,26 +296,26 @@ run.bat
 
 ## 8. 클래스 다이어그램 대응
 
-| 구분 | 클래스 | 위치 |
-|---|---|---|
-| 경계 | 로그인·메인·프로필 입력·관심 출처 관리·공고 목록·공고 상세 화면 | `app/templates/*.html`, `app/main.py` |
-| 경계 | 홈페이지 연결 (재생·녹화 포함) | `app/boundary/web_client.py` |
-| 경계 | LLM API 연결 (Gemini·Anthropic, 형식 검사·녹화 포함) | `app/boundary/llm_client.py` |
-| 제어 | 로그인 제어 · 프로필 제어 · 출처 등록 제어 | `app/control/login_ctl.py`, `profile_ctl.py`, `source_ctl.py` |
-| 제어 | 수집 허용 규칙 (등록·수집 요청마다, 판정만) | `app/control/robots_rule.py` |
-| 제어 | 수집 스케줄러 · 수집 제어 · 응답 해석기 | `collect_scheduler.py`, `collect_ctl.py`, `parser.py` |
-| 제어 | 조건 추출 제어 · 근거 대조기 | `extract_ctl.py`, `verifier.py` |
-| 제어 | 공고 조회 제어 · 판정 엔진 | `query_ctl.py`, `engine.py` |
-| 실체 | 계정 · 로그인 세션 · 학적 프로필 · 출처 · 관심 출처 · 공지 · 참여 조건 · 수집 실패 기록 · 열람 기록 | `app/entity.py` |
-| (SPRINT 3) | 알림 스케줄러 · 알림 제어 · 알림 발송 연결 · 알림 채널 · 알림 발송 기록 | 테이블만 있음 |
-| (다이어그램 밖) | 모의 게시판, 예시 결과, 추출 API 비교·채점 | `app/demo/` — 시연·측정 도구, 시연 모드에서만 |
+| 패키지 | 구분 | 클래스 | 파일 |
+|---|---|---|---|
+| (HCI) | 경계 | 로그인 · 메인 · 프로필 입력 · 관심 출처 관리 · 공고 목록 · 공고 상세 화면 | `app/hci/*_view.py` + `templates/*_view.html` (메인 화면 = 공고 목록 5-1) |
+| 사용자 | 제어 | 로그인 제어 · 프로필 제어 | `pd/user/login_ctl.py`, `profile_ctl.py` |
+| 사용자 | 실체 | 계정 · 로그인 세션 · 학적 프로필 · 알림 채널(SPRINT 3) | `pd/user/account.py`, `session.py`, `profile.py`, `channel.py` |
+| 관심출처 | 제어 | 출처 등록 제어 · 수집 허용 규칙 | `pd/source/source_ctl.py`, `robots.py` |
+| 관심출처 | 실체 | 출처 · 관심 출처 | `pd/source/source.py`, `subscription.py` |
+| 공지수집 | 제어 | 수집 스케줄러 · 수집 제어 · 응답 해석기 · 조건 추출 제어 · 근거 대조기 | `pd/collect/collect_scheduler.py`, `collect_ctl.py`, `parser.py`, `extract_ctl.py`, `verifier.py` |
+| 공지수집 | 실체 | 수집 실패 기록 | `pd/collect/failure.py` |
+| 공고 | 제어 | 공고 조회 제어 · 판정 엔진 | `pd/notice/query_ctl.py`, `engine.py` |
+| 공고 | 실체 | 공지 · 참여 조건 · 열람 기록 | `pd/notice/notice.py`, `condition.py`, `view_log.py` |
+| 알림 | 제어·실체 | 알림 스케줄러 · 알림 제어 · 알림 발송 기록 (SPRINT 3) | `pd/notify/*` 뼈대만 |
+| 외부 | 경계 | 홈페이지 연결 · LLM API 연결 · 알림 발송 연결(SPRINT 3) | `pd/external/web.py`, `llm_client.py`, `notifier.py` |
+| (설계 외) | 보조 | 게시판 HTML·RSS 읽기, 화면 공통, 실제 게시판 목록 | `pd/external/board_html.py`, `hci/common.py`, `pd/source/presets.py` |
+| (다이어그램 밖) | 시연 | 모의 게시판, 예시 결과, 규칙 기반, 추출 API 비교·채점, 시연 패널 | `app/demo/` — 시연 모드에서만 |
 
 **구현 단계에서 추가된 의존 (클래스 다이어그램 v4에 없음)**
-- 수집 제어 → 수집 허용 규칙: 수집할 때 요청마다 robots.txt를 확인하려고 생겼다. 패키지 수준에서는 이미 있는 의존(공지 수집 → 관심 출처)이라 패키지 다이어그램은 바뀌지 않는다.
-- 출처 등록 제어 → 응답 해석기: UC3 예외 3(게시글 목록 확인)을 수집과 같은 해석 규칙으로 하려고 생겼다.
-  **패키지 수준에서 관심 출처 → 공지 수집 의존이 새로 생겨 공지 수집 ↔ 관심 출처 순환이 된다 (팀 결정 필요).**
-  해결안: 응답 해석기를 외부 연동 패키지로 옮기거나, 패키지 다이어그램에 의존을 추가하고 순환을 설명한다.
-최종 보고서에 이 내용을 남긴다.
+- 수집 제어 → 수집 허용 규칙: 수집할 때 요청마다 robots.txt를 확인한다. 패키지 수준에서는 이미 있는 의존(공지수집 → 관심출처)이다.
+- 응답 해석기·홈페이지 연결 → 게시판 HTML 읽기(board_html): 같은 패키지 안이거나 공지수집 → 외부(이미 있는 의존)다.
+- v2.4~v2.7의 '출처 등록 제어 → 응답 해석기'(관심출처 → 공지수집, 순환)는 v3.0에서 없앴다 (해결안 3).
 
 ## 9. 주의 · 한계
 
@@ -280,7 +326,7 @@ run.bat
 - 저장된 응답은 2026-10-11 것이다. 지금 학교 화면이 바뀌었는지는 `FETCH_MODE=live`로 한 번 돌려 봐야 안다.
 - 재생할 때 생기는 차이:
   - 저장해 둔 공지만 상세를 연다. RSS의 나머지 번호는 '저장 범위 밖'으로 요청하지 않는다 (실패로 세지 않음).
-  - 주소를 직접 입력하면, 그 주소의 응답이 없어도 같은 사이트 응답이 있으면 '접속 가능'으로 본다.
+  - 주소를 직접 입력하면 그 주소(또는 RSS)의 저장된 응답이 있어야 등록된다. 없으면 '접속할 수 없습니다'.
 - robots.txt가 4xx(없음)이면 금지 규칙이 없는 것으로 보고 허용한다 (RFC 9309).
   수집기 v4는 4xx도 '읽지 못함'으로 보고 등록을 보류했다. 이 점이 v4와 다르다.
 - 학과 판정은 숨기기보다 보여 주는 쪽(확인 필요)으로 기운다.
@@ -289,49 +335,37 @@ run.bat
   - 키워드 표를 다른 학과로 넓힐 때 다시 손볼 곳이다.
 - 근거 대조기는 값의 **숫자**만 근거와 맞춰 본다. '재학생'↔'휴학생'처럼 글자로만 다른 값은 거르지 못한다.
 - 마감일 대조는 근거 문장 속 '4.3' 같은 소수도 4월 3일로 읽을 수 있다. 마감일이 그 날짜와 우연히 같을 때만 잘못 통과한다.
-- 수집 잠금이 웹 서버 메모리에 있어, 스케줄러를 별도 프로세스로 떼면 수집 상태를 DB로 옮겨야 한다 (팀 결정 전).
+- 수집 잠금이 웹 서버 메모리(`CollectCtl`)에 있어, 스케줄러를 별도 프로세스로 떼면 수집 상태를 DB로 옮겨야 한다.
 - 같은 사이트에는 1초에 1번 이하로 요청한다. 첨부·이미지(`/common/`)는 robots.txt 금지라 받지 않는다.
 
-## 10. 테스트
+## 10. 테스트 · 코드 검사
 
 ```bat
 python -m pytest -q
+ruff format --check .
+ruff check .
 ```
 
-52개. 인터넷·API 키 없이 돈다. lxml이 없는 환경에서도 모두 통과하는지 확인했다.
-- 해석기 (v4 규칙 점검 포함), 근거 대조기, 판정 엔진, 수집 허용 규칙
-- 모의 게시판 시나리오 전체, 실제 응답 재생 수집
-- LLM 녹화→재생, Anthropic 요청 형식, 채점
-- v2.1 추가:
-  - 출처 간 연쇄 중단
-  - 형식 오류 LLM 응답 3회 재시도
-  - 추출 오류 공지만 확인 필요
-  - 학과 판정 표, 학년도 오인
-  - 값 숫자 대조
-  - robots.txt (못 읽음·404·금지)
-  - 수집 중 요청마다 robots.txt 확인, 목록 선택 등록의 robots.txt 확인
-  - 시연 모드 밖 초기화 차단
-- v2.2 추가:
-  - lxml 없이 RSS 읽기, requirements에 lxml
-  - 운영 모드에서 시연 코드 차단 (예시 결과·모의·실패 확인 출처·비교 화면)
-  - 계정 만들기 도구와 로그인 화면 안내
-  - '제외' 조건 (학과·학년·소속 대학)
-  - 학과 일부 겹침은 두 글자 이상
-- v2.3 추가:
-  - 마감일 날짜 대조 (쓰는 방식이 달라도 통과, 날짜·연도·시각이 다르면 실패)
-  - 확인 필요 비율 지표
-- v2.4 추가:
-  - 다른 대상을 빼는 '제외' (휴학생·졸업예정자·대학원생)
-  - 마감일: 시작일·연도 이어받기·해 넘김
-  - UC3 예외 3 (실제 응답 재생 주소, 모의 게시판 주소)
-- v2.5 추가: 시연 계정 (예전 계정 정리, 무작위 비밀번호 저장)
-- v2.6 추가: 세션 만료는 실제 시각, 비밀번호가 바뀌면 세션 끊김
-- v2.7 추가: 구분 기호 없이 붙여 쓴 '제외'
+테스트 66개 (v2.7: 52개). 인터넷·API 키 없이 돈다. lxml이 없는 환경에서도 모두 통과하는지 확인했다.
+파일 순서와 상관없이 돈다 (시나리오 테스트는 처음에 시연 초기화를 함).
+
+| 파일 | 내용 |
+|---|---|
+| `test_architecture.py` (v3.0 새로) | 계층 금지·패키지 의존 10개·화면별 패키지·`app.demo` 분리, 의존 10개 순환 없음, 폴더와 표 일치, 검사기가 위반을 실제로 잡는지 |
+| `test_user.py` | 시연 계정 정리·무작위 비밀번호, 세션 만료(실제 시각), 비밀번호 변경 시 세션 끊김, 계정 만들기 도구, 메인 진입(/) |
+| `test_source.py` | robots.txt 판정, 목록 선택 등록의 robots 확인, UC3 예외 3(실제·모의), **robots 먼저 읽기·5xx 보류**, **운영 모드 시연 출처 숨김** |
+| `test_collect.py` | 해석기(v4 규칙), 실제 응답 파싱·재생 수집, 근거·숫자·마감일 대조, 출처 간 연쇄 중단, 요청마다 robots, 추출 오류, LLM 3회 실패·형식 오류, **대안 2 _end_source**, **운영 모드 LLM 미설정 → 확인 필요** |
+| `test_notice.py` | 판정 항목·학과 표·학년도·'제외' 조건 전부, **judge(profile)는 관심 출처만**, **상세 판정 = 목록 판정** |
+| `test_external.py` | **접속 확인 3상태(ok·unreachable·no_posts)**, lxml 없이 RSS, LLM 녹화→재생, Anthropic 요청 형식 |
+| `test_demo.py` | 규칙 기반, 채점·확인 필요 비율, 시연 모드 밖 차단, **시연 패널이 끼워지는지**, **예시 결과 주입** |
+| `test_scenario.py` | 모의 게시판 시나리오 전체 (UC1→UC5) |
+
+굵게 쓴 것이 v3.0에서 새로 넣은 테스트다.
 
 ## 11. 팀 결정 대기 · 다음 스프린트
 
 - 기술 스택 (React·PostgreSQL로 옮길지, 데모 그대로 두고 이유를 남길지)
 - 정답 라벨 (5장의 네 가지)
-- 폴더를 패키지 다이어그램 6개 × 3계층으로 다시 나눌지, 스케줄러를 웹 서버와 분리할지
+- 스케줄러를 웹 서버와 분리할지 (분리하면 수집 상태를 DB로)
 - 알림(이메일·디스코드), D-day 달력, 미열람 비율 (SPRINT 3), 알림 채널 입력 화면
 - 모집 공고 아님 표시 방식, 학점 같은 '기타' 조건 처리

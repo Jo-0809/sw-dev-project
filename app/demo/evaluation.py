@@ -18,14 +18,17 @@
   판정 일치율        labels.json 의 프로필로 판정 엔진을 돌린 결과가 expected_verdict 와 같은 비율
   평균 응답 시간     API 호출(또는 녹화된 호출)의 평균 ms
 """
+
 import json
 import re
 import threading
 from datetime import datetime
 
 from .. import config
-from ..boundary import llm_client, web_client
-from ..control import engine, extract_ctl, parser
+from ..pd.collect import extract_ctl, parser, verifier
+from ..pd.external import llm_client, web
+from ..pd.notice import engine
+from . import rule_based
 
 EVAL_DIR = config.BASE_DIR / "evaluation"
 LABELS = EVAL_DIR / "labels.json"
@@ -48,7 +51,7 @@ def eval_notices():
     for lab in load_labels()["notices"]:
         url = f"https://www.gnu.ac.kr/{lab['site']}/na/ntt/selectNttInfo.do?nttSn={lab['ntt_sn']}"
         try:
-            html = json.loads(web_client._record_path(url).read_text(encoding="utf-8"))["text"]
+            html = json.loads(web._record_path(url).read_text(encoding="utf-8"))["text"]
             p = parser.parse_detail(html, url, lab["ntt_sn"])
         except (OSError, ValueError, KeyError):
             p = None
@@ -76,14 +79,31 @@ def _match(label_conds, pred_conds):
 
 
 def availability():
-    rows = [{"id": "rule", "name": METHODS["rule"], "model": "-", "has_key": True, "recordings": 0,
-             "usable": True, "note": "API 없이 항상 실행"}]
+    rows = [
+        {
+            "id": "rule",
+            "name": METHODS["rule"],
+            "model": "-",
+            "has_key": True,
+            "recordings": 0,
+            "usable": True,
+            "note": "API 없이 항상 실행",
+        }
+    ]
     for pid in ("gemini", "anthropic"):
         key = llm_client.has_key(pid)
         recs = llm_client.recording_count(pid)
-        rows.append({"id": pid, "name": METHODS[pid], "model": llm_client.model_of(pid), "has_key": key,
-                     "recordings": recs, "usable": key or recs > 0,
-                     "note": ("키 있음" if key else "키 없음") + f" · 녹화 {recs}건"})
+        rows.append(
+            {
+                "id": pid,
+                "name": METHODS[pid],
+                "model": llm_client.model_of(pid),
+                "has_key": key,
+                "recordings": recs,
+                "usable": key or recs > 0,
+                "note": ("키 있음" if key else "키 없음") + f" · 녹화 {recs}건",
+            }
+        )
     return rows
 
 
@@ -99,57 +119,84 @@ def run_method(method, mode="auto", progress=None):
         row = {"ntt_sn": lab["ntt_sn"], "title": lab["title"], "expected_verdict": lab.get("expected_verdict")}
         if lab.get("exclude") or p is None:
             # 이미지 본문은 수집 단계에서 '확인 필요'로 저장되므로 확인 필요 비율에는 넣는다
-            row.update(excluded=True, reason=lab.get("exclude_reason") or "저장된 응답 없음",
-                       status="확인 필요" if lab.get("exclude") else None)
+            row.update(
+                excluded=True,
+                reason=lab.get("exclude_reason") or "저장된 응답 없음",
+                status="확인 필요" if lab.get("exclude") else None,
+            )
             rows.append(row)
             continue
         info, err = None, None
         if method == "rule":
-            resp = extract_ctl.rule_based(p["title"], p["body"])
+            resp = rule_based.rule_based(p["title"], p["body"])
         else:
             resp, info, err = extract_ctl.run_llm(p["title"], p["body"], provider=method, mode=mode)
             if resp is None:
-                row.update(excluded=False, failed=True,
-                           error=str(err) if err else "키·녹화 없음 (실행 못 함)", unavailable=err is None)
+                row.update(
+                    excluded=False,
+                    failed=True,
+                    error=str(err) if err else "키·녹화 없음 (실행 못 함)",
+                    unavailable=err is None,
+                )
                 rows.append(row)
                 continue
         if info and info.get("latency_ms") is not None:
             lat.append(info["latency_ms"])
-        decided = extract_ctl.decide(resp, p["body"])
+        decided = extract_ctl.decide_status(resp, p["body"])
         if decided["status"] == "모집 공고 아님":
             verdict = "모집 공고 아님"
         else:
-            verdict = engine.judge_one(prof, {"id": 0, "status": decided["status"]}, decided["conditions"])["verdict"]
-        preds = resp.get("conditions") or []
-        checked = [c["verified"] for c in extract_ctl.verifier.verify(resp, p["body"])["conditions"]]
+            verdict = engine._judge_one(  # 채점용 예외: 공지 하나를 DB 없이 판정
+                prof, {"id": 0, "status": decided["status"]}, decided["conditions"]
+            )["verdict"]
+        preds = [c for c in resp.get("conditions") or [] if isinstance(c, dict)]  # 근거 대조기와 같은 범위
+        checked = [c["verified"] for c in verifier.verify(resp, p["body"])["conditions"]]
         rec_ok = bool(resp.get("is_recruitment", True)) == bool(lab["is_recruitment"])
         dl_pred = (resp.get("deadline") or "")[:10] or None
         lconds = lab["conditions"] if lab["is_recruitment"] else []
         pconds = preds if resp.get("is_recruitment", True) else []
         matched, used = _match(lconds, pconds)
-        row.update(excluded=False, failed=False, how=(info or {}).get("how", "rule"),
-                   model=(info or {}).get("model", "-"), latency_ms=(info or {}).get("latency_ms"),
-                   is_recruitment=resp.get("is_recruitment"), recruit_ok=rec_ok,
-                   deadline=dl_pred, deadline_label=lab.get("deadline"),
-                   deadline_ok=(dl_pred == lab.get("deadline")) if lab["is_recruitment"] else None,
-                   label_conds=len(lconds), pred_conds=len(pconds), matched=matched, pred_matched=used,
-                   verified=sum(checked), fabricated=len(checked) - sum(checked),
-                   verdict=verdict, verdict_ok=verdict == lab.get("expected_verdict"), status=decided["status"],
-                   conditions=[{**c, "verified": v} for c, v in zip(preds, checked)])
+        row.update(
+            excluded=False,
+            failed=False,
+            how=(info or {}).get("how", "rule"),
+            model=(info or {}).get("model", "-"),
+            latency_ms=(info or {}).get("latency_ms"),
+            is_recruitment=resp.get("is_recruitment"),
+            recruit_ok=rec_ok,
+            deadline=dl_pred,
+            deadline_label=lab.get("deadline"),
+            deadline_ok=(dl_pred == lab.get("deadline")) if lab["is_recruitment"] else None,
+            label_conds=len(lconds),
+            pred_conds=len(pconds),
+            matched=matched,
+            pred_matched=used,
+            verified=sum(checked),
+            fabricated=len(checked) - sum(checked),
+            verdict=verdict,
+            verdict_ok=verdict == lab.get("expected_verdict"),
+            status=decided["status"],
+            conditions=[{**c, "verified": v} for c, v in zip(preds, checked, strict=True)],
+        )
         rows.append(row)
     scored = [r for r in rows if not r["excluded"] and not r.get("failed")]
     rec = [r for r in scored if r["deadline_ok"] is not None]
 
     def pct(a, b):
         return round(a / b * 100, 1) if b else None
+
     label_total = sum(r["label_conds"] for r in scored)
     pred_total = sum(r["pred_conds"] for r in scored)
     summary = {
-        "method": method, "name": METHODS[method], "mode": mode,
+        "method": method,
+        "name": METHODS[method],
+        "mode": mode,
         "model": next((r["model"] for r in scored if r.get("model") not in (None, "-")), "-"),
         "how": sorted({r["how"] for r in scored}) if scored else [],
-        "sample_total": len(rows), "excluded": sum(r["excluded"] for r in rows),
-        "scored": len(scored), "failed": sum(1 for r in rows if r.get("failed") and not r.get("unavailable")),
+        "sample_total": len(rows),
+        "excluded": sum(r["excluded"] for r in rows),
+        "scored": len(scored),
+        "failed": sum(1 for r in rows if r.get("failed") and not r.get("unavailable")),
         "unavailable": sum(1 for r in rows if r.get("unavailable")),
         "recruit_acc": pct(sum(r["recruit_ok"] for r in scored), len(scored)),
         "deadline_acc": pct(sum(r["deadline_ok"] for r in rec), len(rec)),
@@ -158,8 +205,9 @@ def run_method(method, mode="auto", progress=None):
         "evidence_pass": pct(sum(r["verified"] for r in scored), pred_total),
         "fabricated": sum(r["fabricated"] for r in scored),
         "verdict_acc": pct(sum(r["verdict_ok"] for r in scored), len(scored)),
-        "check_ratio": pct(sum(1 for r in rows if r.get("status") == "확인 필요"),
-                           sum(1 for r in rows if r.get("status"))),
+        "check_ratio": pct(
+            sum(1 for r in rows if r.get("status") == "확인 필요"), sum(1 for r in rows if r.get("status"))
+        ),
         "latency_avg_ms": round(sum(lat) / len(lat)) if lat else None,
         "labels_reviewed": bool(labels.get("reviewed")),
     }
@@ -168,8 +216,12 @@ def run_method(method, mode="auto", progress=None):
 
 def run_compare(methods=None, mode="auto", progress=None):
     methods = methods or [m["id"] for m in availability() if m["usable"]]
-    out = {"at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "mode": mode,
-           "labels_status": load_labels().get("status"), "results": []}
+    out = {
+        "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "mode": mode,
+        "labels_status": load_labels().get("status"),
+        "results": [],
+    }
     for m in methods:
         out["results"].append(run_method(m, mode=mode, progress=progress))
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -203,16 +255,28 @@ def start_background(mode="auto"):
         finally:
             state.update(running=False, progress="")
             _lock.release()
+
     threading.Thread(target=work, daemon=True).start()
     return True
 
 
 def summary_table(result):
     """터미널 출력용 표."""
-    cols = [("방법", "name"), ("채점", "scored"), ("모집판별%", "recruit_acc"), ("마감일%", "deadline_acc"),
-            ("조건재현%", "cond_recall"), ("조건정밀%", "cond_precision"), ("근거통과%", "evidence_pass"),
-            ("지어냄", "fabricated"), ("확인필요%", "check_ratio"), ("판정일치%", "verdict_acc"), ("평균ms", "latency_avg_ms"),
-            ("실패", "failed"), ("못돌림", "unavailable")]
+    cols = [
+        ("방법", "name"),
+        ("채점", "scored"),
+        ("모집판별%", "recruit_acc"),
+        ("마감일%", "deadline_acc"),
+        ("조건재현%", "cond_recall"),
+        ("조건정밀%", "cond_precision"),
+        ("근거통과%", "evidence_pass"),
+        ("지어냄", "fabricated"),
+        ("확인필요%", "check_ratio"),
+        ("판정일치%", "verdict_acc"),
+        ("평균ms", "latency_avg_ms"),
+        ("실패", "failed"),
+        ("못돌림", "unavailable"),
+    ]
     lines = [" | ".join(c for c, _ in cols)]
     for r in result["results"]:
         s = r["summary"]

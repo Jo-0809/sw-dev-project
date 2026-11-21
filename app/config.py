@@ -1,4 +1,5 @@
 """설정값. 프로젝트 폴더의 .env 파일을 읽는다 (없으면 기본값)."""
+
 import os
 from datetime import date, datetime
 from pathlib import Path
@@ -31,20 +32,24 @@ FETCH_MODE = os.environ.get("FETCH_MODE", "replay").strip().lower()
 WEB_RECORD_DIR = Path(os.environ.get("WEB_RECORD_DIR", BASE_DIR / "recordings" / "web"))
 
 # ---- LLM API 연결 ----
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()      # gemini / anthropic
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()  # gemini / anthropic
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")              # 폐기 일정 페이지: 새 프로젝트는 3.8 Flash 권장 (2026-11-14 확인)
+GEMINI_MODEL = os.environ.get(
+    "GEMINI_MODEL", "gemini-3.8-flash"
+)  # 폐기 일정 페이지: 새 프로젝트는 3.8 Flash 권장 (2026-11-14 확인)
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-5-5")       # 모델 이름 확인 필요
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-5-5")  # 모델 이름 확인 필요
 # auto   : 녹화된 응답이 있으면 그것을 쓰고(호출 안 함), 없으면 API 호출 후 녹화
 # live   : 항상 API 호출 후 녹화
 # replay : 녹화된 응답만 쓴다. API를 부르지 않는다 (발표장)
 LLM_MODE = os.environ.get("LLM_MODE", "auto").strip().lower()
 LLM_RECORD_DIR = Path(os.environ.get("LLM_RECORD_DIR", BASE_DIR / "recordings" / "llm"))
 LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "60"))
-LLM_MAX_RETRY = 3                     # 조건 추출 제어: 최대 재시도 횟수 = 3
+LLM_MAX_RETRY = 3  # 조건 추출 제어: 최대 재시도 횟수 = 3
 
-COLLECT_INTERVAL_MIN = int(os.environ.get("COLLECT_INTERVAL_MIN", "30"))   # 수집 스케줄러: 수집 주기
+AUTO_LOGIN_DAYS = 30  # 로그인 제어: 자동 로그인 유지 기간 (일)
+LOGIN_DAYS = 1  # 자동 로그인을 고르지 않았을 때
+COLLECT_INTERVAL_MIN = int(os.environ.get("COLLECT_INTERVAL_MIN", "30"))  # 수집 스케줄러: 수집 주기
 SCHEDULER_ENABLED = os.environ.get("SCHEDULER_ENABLED", "1") == "1"
 HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "10"))
 USER_AGENT = "NotchilppeonBot/0.2 (GNU SW Engineering class project)"
@@ -67,10 +72,14 @@ def demo_credentials():
             if line.startswith("password="):
                 return DEMO_ID, line.split("=", 1)[1].strip()
     import secrets
+
     pw = secrets.token_urlsafe(9)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"# 놓칠뻔 시연 계정 (자동 생성, git에 올리지 않음)\nid={DEMO_ID}\npassword={pw}\n", encoding="utf-8")
+    path.write_text(
+        f"# 놓칠뻔 시연 계정 (자동 생성, git에 올리지 않음)\nid={DEMO_ID}\npassword={pw}\n", encoding="utf-8"
+    )
     return DEMO_ID, pw
+
 
 # 시연용 '오늘' 날짜. 비우면 실제 오늘. 예: DEMO_TODAY=2026-10-31
 _demo_today = os.environ.get("DEMO_TODAY", "").strip()

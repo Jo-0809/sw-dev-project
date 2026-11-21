@@ -1,0 +1,4 @@
+{# 학교 사이트 요청 방식 안내 (app/main.py 가 관심 출처 화면 위쪽에 넣는다) #}
+{% if fetch_mode == 'replay' %}<div class="banner subtle">학교 게시판(<b>경상국립대 …</b>)은 지금 <b>저장된 실제 응답을 재생</b>해요
+  ({{ record_info.capturedAt or '저장 시각 모름' }} 저장, 네트워크 안 씀). 실제로 요청하려면 <code>.env</code>에서 <code>FETCH_MODE=live</code>.
+  {% if demo_mode %}<b>[모의]</b> 게시판은 이 데모 안에 있는 시연용 게시판이에요.{% endif %}</div>{% endif %}

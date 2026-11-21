@@ -1,0 +1,35 @@
+{# 시연 패널 (app/demo/demo_routes.py 가 관심 출처 화면 아래쪽에 넣는다). 운영(DEMO_MODE=0)에서는 없다. #}
+<section class="card demo-panel">
+  <h2>수집 상태 <span class="sub">(시연 패널)</span></h2>
+  <p>수집 스케줄러가 {{ interval }}분마다 등록된 출처를 확인해요.
+    {% if next_run %}다음 자동 수집 {{ next_run }}.{% endif %}
+    {% if last_run.at %} 마지막 수집 {{ last_run.at }}.{% endif %}</p>
+  <div class="actions left">
+    <form method="post" action="/collect"><button class="btn primary" {{ 'disabled' if collecting }}>
+      {% if collecting %}<span class="spin"></span>수집 중…{% else %}지금 수집{% endif %}</button></form>
+    <a class="btn" href="/mock/admin" target="_blank">모의 게시판에 새 공지 올리기</a>
+    <form method="post" action="/demo/reset" onsubmit="return confirm('수집한 공지·프로필·관심 출처를 지우고 처음 상태로 돌릴까요? (계정은 유지)')">
+      <button class="btn ghost">시연 초기화</button></form>
+  </div>
+  {% if last_run.result %}
+  <table class="tbl small">
+    <tr><th>출처</th><th>번호 확보</th><th>새로 저장</th><th>그중 확인 필요 (이미지 본문)</th><th>실패</th><th>비고</th></tr>
+    {% for r in last_run.result %}
+    <tr><td>{{ r.source }}</td><td>{{ r.path or '-' }}</td><td>{{ r.new }}</td><td>{{ r.review or '-' }}</td><td>{{ r.failed }}</td>
+      <td>{{ r.error or r.ended or '' }}
+        {% if r.extract_error %}<span class="sub">추출 오류 {{ r.extract_error }}건 → 확인 필요로 저장</span>{% endif %}
+        {% if r.replay and r.out_of_range %}<span class="sub">저장 범위 밖 {{ r.out_of_range }}건은 요청 안 함 (재생)</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if failures %}
+  <details><summary>수집 실패 기록 {{ failures|length }}건</summary>
+    <table class="tbl small">
+      <tr><th>시각</th><th>출처</th><th>단계</th><th>게시물 번호</th><th>사유</th></tr>
+      {% for f in failures %}<tr><td>{{ f.at }}</td><td>{{ f.source_name }}</td><td>{{ f.stage }}</td><td>{{ f.ntt_sn or '-' }}</td><td>{{ f.reason }}</td></tr>{% endfor %}
+    </table>
+  </details>
+  {% endif %}
+</section>
+{% if collecting or msg == 'collecting' %}<script>setTimeout(() => location.href = '/sources', 2500);</script>{% endif %}
+{% if msg == 'collecting' %}<div class="toast">수집을 시작했어요. 끝나면 결과가 아래에 나와요</div>{% endif %}
