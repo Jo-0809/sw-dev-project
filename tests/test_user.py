@@ -71,7 +71,9 @@ def test_create_account_tool_and_login_hint(server, monkeypatch, tmp_path):
         f"sys.argv=['create_account.py','admin']; runpy.run_path(r'{root / 'tools' / 'create_account.py'}', "
         "run_name='__main__')"
     )
-    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, cwd=root)
+    out = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True, encoding="utf-8", cwd=root
+    )
     assert "계정을 만들었습니다" in out.stdout, out.stderr
     monkeypatch.setattr(account, "count", lambda: 0)
     assert "아직 계정이 없어요" in requests.get(BASE + "/login").text

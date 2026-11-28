@@ -1,4 +1,4 @@
-"""테스트 공통 — 환경 변수, 테스트 서버, 테스트 계정.
+"""테스트 공통 — 환경 변수, 테스트 서버, 테스트 계정, 단위 테스트용 빈 DB.
 
 실행: python -m pytest -q
 모의 게시판과 저장된 실제 응답(recordings/web)을 쓰므로 인터넷 연결 없이 돈다. API 키는 쓰지 않는다.
@@ -84,3 +84,25 @@ def mock_notices(test_account):
 
 def login(session, login_id=TEST_ID, pw=TEST_PW):
     return session.post(BASE + "/login", data={"login_id": login_id, "password": pw})
+
+
+# ---- 단위 테스트용 (tests/unit) — 서버를 띄우지 않고 테스트마다 빈 DB를 새로 만든다 ----
+@pytest.fixture
+def unit_db(tmp_path, monkeypatch):
+    """config.DB_PATH 를 임시 파일로 바꾸고 스키마를 만든다. 테스트가 끝나면 원래 값으로 돌아간다."""
+    from app import config
+    from app.dm import db
+
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "unit.db")
+    db.init_db()
+    return tmp_path / "unit.db"
+
+
+@pytest.fixture
+def two_accounts(unit_db):
+    """계정 두 개 (관심 출처·프로필은 계정 번호가 있어야 저장된다)."""
+    from app.pd.user import account
+
+    account.create("user-a", "pw-a-1234")
+    account.create("user-b", "pw-b-1234")
+    return account.match("user-a", "pw-a-1234"), account.match("user-b", "pw-b-1234")
