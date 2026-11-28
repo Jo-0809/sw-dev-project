@@ -29,7 +29,7 @@
   </div>
   <fieldset class="{{ 'err' if missing and 'grade' in missing }}">
     <legend>학년 <span class="req">*</span></legend>
-    {% for g in range(1, 5) %}
+    {% for g in options.GRADES %}
     <label class="radio"><input type="radio" name="grade" value="{{ g }}" {{ 'checked' if values.grade|string == g|string }}> {{ g }}학년</label>
     {% endfor %}
     {% if missing and 'grade' in missing %}<span class="field-msg">학년을 선택하세요</span>{% endif %}
